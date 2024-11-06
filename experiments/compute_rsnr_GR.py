@@ -1,4 +1,5 @@
 import os
+import sys
 import pickle
 import logging
 
@@ -10,11 +11,15 @@ import pandas as pd
 from tqdm import tqdm
 from itertools import product
 
-from synthetic_ecg import generate_ecg
-from wavelet_basis import wavelet_basis
-from utils import compute_rsnr
-from compressed_sensing import CompressedSensing
-from compressed_sensing import generate_sensing_matrix, find_support_GR
+# import of local modules
+root = os.path.dirname(os.path.realpath('__file__'))
+sys.path.insert(0, os.path.join(root, 'src'))
+
+from dataset.synthetic_ecg import generate_ecg
+from cs.wavelet_basis import wavelet_basis
+from cs import CompressedSensing, generate_sensing_matrix
+from cs.supports import find_support_GR
+from cs.utils import compute_rsnr
 
 
 
