@@ -29,10 +29,3 @@ def add_noise(X, snr, axis=-1, seed=None):
     norm_noise = norm_signal / 10**(snr / 20)
     noise = rng.normal(scale=norm_noise / np.sqrt(X.shape[axis]), size=X.shape)
     return X + noise
-
-def compute_rsnr(x, x_hat, axis=-1):
-    ''' Compute Reconstruction Signal-to-Noise Ratio '''
-    norm_signal = linalg.norm(x, axis=axis)
-    norm_noise = linalg.norm(x - x_hat, axis=axis)
-    rsnr = 20 * np.log10(norm_signal / norm_noise)
-    return rsnr

@@ -7,7 +7,7 @@ import neurokit2 as nk
 import multiprocessing as mp
 
 from tqdm import tqdm
-from utils import add_noise
+from .utils import add_noise
 
 
 def load_synthetic_ecg(num_samples=None, sample_dimension=None, seed=None):
