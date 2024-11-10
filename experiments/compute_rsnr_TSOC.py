@@ -68,7 +68,6 @@ logger.info(f'n={n}, isnr={isnr}, method={method}')
 # PATHs                                                                        #
 ################################################################################
 
-dataset_dir = '/srv/newpenny/dnn-cs/tsoc/data/'
 if not os.path.exists(dataset_dir):
     os.mkdir(dataset_dir)
 
