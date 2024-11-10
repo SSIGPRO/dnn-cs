@@ -25,7 +25,7 @@ def compute_localization(X):
     localization = np.trace(X @ X) / np.trace(X)**2 - 1 / n
     return localization
 
-def solve_rakeness(corr, tau=1.):
+def solve_rakeness(corr, loc=.25):
     '''
     Returns the correlation matrix of the sensing matrix that solves the 
     Rakeness Optimization Problem for Gaussian random sensing sequences as 
@@ -40,17 +40,19 @@ def solve_rakeness(corr, tau=1.):
     where Loc computes the localization of a matrix as define in [1], and tr
     computes the trace of a matrix.
 
-    [1] M. Mangia, F. Pareschi, V. Cambareri, R. Rovatti and G. Setti,
-        "Rakeness-Based Design of Sparse Projection Matrices for Low-Complexity 
-        Compressed Sensing," IEEE Trans. on Circuits and Systems, vol.64, no.5, 
-        pp.1201-1213, May 2017 doi: 10.1109/TCSI.2017.2649572
+    [1] M. Mangia, R. Rovatti and G. Setti, "Rakeness in the Design of 
+    Analog-to-Information Conversion of Sparse and Localized Signals," 
+    in IEEE Transactions on Circuits and Systems I: Regular Papers, 
+    vol. 59, no. 5, pp. 1001-1014, May 2012, doi: 10.1109/TCSI.2012.2191312
 
     Parameters
     ----------
     corr: (n, n) numpy.ndarray,
         signal correlation matrix
-    tau: float, optional (default 1.)
-        rakeness scaling factor
+    loc: float, optional (default .25)
+        rakeness scaling factor that controls the localization of the
+        output correlation matrix. When loc is 0 output correlation is white, 
+        while loc is 1 returns a correlation matrix equal to input correlation.
     
     Return
     ------
@@ -66,11 +68,11 @@ def solve_rakeness(corr, tau=1.):
     w, v = np.abs(w)[::-1], v[..., ::-1]
 
     # apply solution algorithm
-    tau = 1/n + tau * np.sum((w - 1/n)**2)
+    loc = 1/n + loc * np.sum((w - 1/n)**2)
     for k in range(n, 1, -1):
         w_sum = np.sum(w[:k])
         num = k * w - w_sum
-        den = np.sqrt((np.sum(w[:k]**2) - 1/k * w_sum**2) / (tau - 1/k))
+        den = np.sqrt((np.sum(w[:k]**2) - 1/k * w_sum**2) / (loc - 1/k))
         lmbda = 1/k * (1 + num/den)
         if np.min(lmbda) >= 0:
             break
