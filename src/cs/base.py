@@ -58,7 +58,7 @@ def generate_sensing_matrix(
         antipodal=False, 
         orthogonal=False,
         correlation=None,
-        tau=None, 
+        loc=.25, 
         seed=None):
     '''
     Generate sensing matrix for a Compressed Sensing (CS) encoder
@@ -80,9 +80,9 @@ def generate_sensing_matrix(
         correlation matrix of the signal to be acquired. Effective only with
         rakeness mode. If None, Identity matrix is used which, however, is 
         equivalent to standard mode.
-    tau: float, optional (default 1.0)
-        rakeness factor that controls adaptation of the sensing sequences to
-        the signal to be acquired.
+    loc: float, optional (default .25)
+        rakeness scaling factor that controls the localization of the
+        output correlation matrix. Effective only with rakeness mode. 
     seed: {None, int, ...}, optional (default None)
         seed to initialize the random number generator 
         `numpy.random.default_rng`. If None, then fresh, unpredictable entropy 
@@ -110,7 +110,7 @@ def generate_sensing_matrix(
 
         # compute correlation of sensing sequences by solving rakeness
         # optimization problem
-        corr = solve_rakeness(correlation, tau=tau)
+        corr = solve_rakeness(correlation, loc=loc)
 
         # generate gaussian/antipodal sensing sequences
         if antipodal:
