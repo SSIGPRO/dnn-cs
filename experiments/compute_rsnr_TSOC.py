@@ -15,6 +15,7 @@ from itertools import product
 root = os.path.dirname(os.path.realpath('__file__'))
 sys.path.insert(0, os.path.join(root, 'src'))
 
+from dataset import dataset_dir
 from dataset.synthetic_ecg import generate_ecg
 from cs.wavelet_basis import wavelet_basis
 from cs import CompressedSensing, generate_sensing_matrix
@@ -48,14 +49,18 @@ ecg_seed = 0            # random seed for ECG generation
 basis = 'sym6'          # sparsity basis
 
 # ---- support ----
-method = 'TSOC2'         # {'TSOC', 'TSOC2'}
+method = 'TSOC'         # {'TSOC', 'TSOC2'}
 
 # ---- compressed sensing ----
-# m_list = (16, 32, 48, 64)
-m_list = (64, )
-mode_list = ('standard', )
-orth_list = (True, )
+m_list = (16, 32, 48, 64)
+mode = 'rakeness' # standard, rakeness
+orth = True
 seed_list = np.arange(20)
+
+# ---- rakeness ----
+loc = .25
+corr_name = 'aa851c0819ff9aaacf4099aa5b84696d'
+
 
 logger.info(f'n={n}, isnr={isnr}, method={method}')
 
@@ -63,49 +68,54 @@ logger.info(f'n={n}, isnr={isnr}, method={method}')
 # PATHs                                                                        #
 ################################################################################
 
-data_folder = '/srv/newpenny/dnn-cs/tsoc/data/'
-if not os.path.exists(data_folder):
-    os.mkdir(data_folder)
+dataset_dir = '/srv/newpenny/dnn-cs/tsoc/data/'
+if not os.path.exists(dataset_dir):
+    os.mkdir(dataset_dir)
 
 data_name = f'ecg_N={N}_n={n}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}'\
             f'_isnr={isnr}_seed={ecg_seed}'
-data_path = os.path.join(data_folder, data_name + '.pkl')
+data_path = os.path.join(dataset_dir, data_name + '.pkl')
 
-folder = os.path.join(data_folder, data_name)
+folder = os.path.join(dataset_dir, data_name)
 if not os.path.exists(folder):
     os.mkdir(folder)
 
 rsnr_path = os.path.join(folder, f'rsnr_method={method}.pkl')
-supports_path = lambda mode, m, orth, seed: os.path.join(folder, 
-    f'supports_method={method}_mode={mode}_m={m}_orth={orth}_seed={seed}.pkl')
+
+if mode == 'standard':
+    supports_path = lambda m, seed: os.path.join(
+        folder, f'supports_method={method}_mode={mode}_m={m}_orth={orth}'\
+                f'_seed={seed}.pkl')
+    
+elif mode == 'rakeness':
+    supports_path = lambda m, seed: os.path.join(
+        folder, f'supports_method={method}_mode={mode}_m={m}'\
+                f'_corr={corr_name}_loc={loc}_orth={orth}_seed={seed}.pkl')
 
 
 ################################################################################
-# Load/Generate Data                                                           #
+# Load Data                                                                    #
 ################################################################################
 
-# loading/generate data
-if os.path.exists(data_path):
-    logger.debug(f'loading data from {data_path}')
-    with open(data_path, 'rb') as f:
-        X = pickle.load(f)
-else:
-    logger.debug(f'generating data')
-    X = generate_ecg(
-        length=n, 
-        num_traces=N,
-        heart_rate=heart_rate, 
-        sampling_rate=fs, 
-        snr=isnr, 
-        random_state=ecg_seed,
-        verbose=True,
-        processes=processes,
-    )
-    logger.debug(f'storing data in {data_path}')
-    with open(data_path, 'wb') as f:
-        pickle.dump(X, f)
+# loading data
+if not os.path.exists(data_path):
+    raise RuntimeError(f'dataset {data_path} not available')
 
+logger.debug(f'loading data from {data_path}')
+with open(data_path, 'rb') as f:
+    X = pickle.load(f)
+
+# generate sparsity basis
 D = wavelet_basis(n, 'sym6', level=2)
+
+# load ECG correlation matrix
+corr = None  # if mode is not rakeness, corr is set to None
+if mode == 'rakeness':
+    corr_path = os.path.join(dataset_dir, 'correlation', corr_name + '.pkl')
+    if not os.path.exists(corr_path):
+        raise RuntimeError(f'correlation {corr_name} not available')
+    with open(corr_path, 'rb') as f:
+        corr = pickle.load(f)
 
 
 ################################################################################
@@ -113,7 +123,7 @@ D = wavelet_basis(n, 'sym6', level=2)
 ################################################################################
 
 columns = pd.MultiIndex.from_product(
-    (mode_list, m_list, orth_list, seed_list), 
+    ([mode], m_list, [orth], seed_list), 
     names=('mode', 'm', 'orth', 'seed'),
 )
 
@@ -131,40 +141,32 @@ elif method == 'TSOC2':
 else:
     find_support = None
 
-for i, (mode, m, orth, seed) in tqdm(list(enumerate(columns))):
+for i, (_, m, _, seed) in tqdm(list(enumerate(columns))):
 
     # Generate Sensing Matrix and set Compressed Sensing system
-    logger.debug(f'generating Sensing Matrix ({m}, {n}), seed={seed}')
-    A = generate_sensing_matrix((m, n), mode=mode, orthogonal=orth, seed=seed)
+    logger.debug(f'generating sensing matrix ({m}, {n}), seed={seed}')
+    A = generate_sensing_matrix(
+        (m, n), mode=mode, orthogonal=orth, 
+        correlation=corr, loc=loc, seed=seed)
     cs = CompressedSensing(A, D)
 
-    _supports_path = supports_path(mode, m, orth, seed)
-    if os.path.exists(_supports_path):
-        with open(_supports_path, 'rb') as f:
-            S = pickle.load(f)
-    else:
-        logger.debug(f'computing supports')
-        if processes is None:
-             desc = f'supports m={m}, seed={seed}'
-             S = [find_support(x, cs) for x in tqdm(X, desc=desc)]
-        else:
-            args_list = product(X, [cs])
-            with mp.Pool(processes=processes) as pool:
-                S = pool.starmap(find_support, args_list, chunksize=10)
-        S = np.stack(S)
-        logger.debug(f'storing supports')
-        with open(_supports_path, 'wb') as f:
-              pickle.dump(S, f)
+    _supports_path = supports_path(m, seed)
+    if not os.path.exists(_supports_path):
+        raise RuntimeError(f'supports {_supports_path} not available')
+    logger.debug(f'loading supports {_supports_path}')
+    with open(_supports_path, 'rb') as f:
+        S = pickle.load(f)
     
     # Compute measurements
-    logger.debug(f'reconstructing signals')
+    logger.debug(f'encoding signals')
     Y = cs.encode(X)
 
     # reconstruct signal
-    logger.debug(f'computing RSNR')
+    logger.debug(f'reconstructing signals')
     X_hat = cs.decode(Y, S)
 
     # compute RSNR
+    logger.debug(f'computing RSNR')
     _rsnr = compute_rsnr(X, X_hat)
     rsnr = pd.DataFrame(data=_rsnr, columns=columns[[i]])
 
