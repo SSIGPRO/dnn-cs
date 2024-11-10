@@ -1,0 +1,1 @@
+dataset_dir = '/srv/newpenny/dnn-cs/tsoc/data/'
