@@ -41,7 +41,7 @@ N = 10_000              # number of ECG traces
 n = 128                 # length of an ECG trace
 fs = 256                # sampling rate
 heart_rate = (60, 100)  # min and max heart rate
-isnr = 35               # signal-to-noise ratio in dB (35)
+# isnr = 25               # signal-to-noise ratio in dB (35)
 ecg_seed = 0            # random seed for ECG generation
 basis = 'sym6'          # sparsity basis
 
@@ -51,6 +51,10 @@ def cmdline_args():
     parser = argparse.ArgumentParser(
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    parser.add_argument(
+        "-i", "--isnr", type=int, default=None,
+        help="intrinsic signal-to-noise ration (ISNR) (default: %(default)s)"
     )
     parser.add_argument(
         "-a", "--algorithm", choices=('TSOC', 'TSOC2'), default='TSOC',
@@ -92,7 +96,7 @@ def cmdline_args():
     return parser.parse_args()
 
 
-def main(method, mode, orth, m, corr, loc, seed, processes):
+def main(isnr, method, mode, orth, m, corr, loc, seed, processes):
 
     if not os.path.exists(dataset_dir):
         os.mkdir(dataset_dir)
@@ -150,7 +154,7 @@ def main(method, mode, orth, m, corr, loc, seed, processes):
 
     logger.debug(f'computing supports')
     if processes is None:
-        S = [find_support(x, cs) for x in tqdm(X)]
+        S = [find_support(x, cs) for x in tqdm(X,desc=f'{m}, {seed}')]
     else:
         with mp.Pool(processes=processes) as pool:
             S = pool.starmap(find_support, product(X, [cs]), chunksize=50)
@@ -176,6 +180,7 @@ if __name__ == '__main__':
     logger.debug(str(args))
 
     main(
+        args.isnr,
         args.algorithm,
         args.encoder,
         args.orthogonal,
