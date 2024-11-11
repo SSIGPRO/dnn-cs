@@ -20,7 +20,6 @@ from dataset import dataset_dir
 from dataset.synthetic_ecg import generate_ecg
 from cs.wavelet_basis import wavelet_basis
 from cs import CompressedSensing, generate_sensing_matrix
-from cs.supports import find_support_TSOC, find_support_TSOC2
 from cs.utils import compute_rsnr
 
 
@@ -182,13 +181,6 @@ def main(m_list, seed_list, isnr, method, mode, orth, corr, loc, seed, processes
         todrop = [col for col in df.columns if col in columns]
         if len(todrop) > 0:
             columns = columns.drop(todrop)
-
-    if method == 'TSOC':
-        find_support = find_support_TSOC
-    elif method == 'TSOC2':
-        find_support = find_support_TSOC2
-    else:
-        find_support = None
 
     for i, (_, m, _, seed) in tqdm(list(enumerate(columns))):
 
