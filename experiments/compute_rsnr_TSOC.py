@@ -23,7 +23,6 @@ from cs import CompressedSensing, generate_sensing_matrix
 from cs.utils import compute_rsnr
 
 
-
 logger = logging.getLogger(__name__)
 
 logging.basicConfig(
@@ -81,7 +80,7 @@ def cmdline_args():
         help="intrinsic signal-to-noise ration (ISNR) (default: %(default)s)"
     )
     parser.add_argument(
-        "-a", "--algorithm", choices=('TSOC', 'TSOC2'), default='TSOC',
+        "-a", "--algorithm", choices=('GR', 'TSOC', 'TSOC2'), default='TSOC',
         help="support identification algorithm (default: %(default)s)",
     )
     parser.add_argument(
@@ -93,12 +92,16 @@ def cmdline_args():
         help="weather sensing matrix is orthogonal",
     )
     parser.add_argument(
-        "-c", "--correlation", default='aa851c0819ff9aaacf4099aa5b84696d',
-        help="Correlation name (default: %(default)s)",
+        "-c", "--correlation",
+        help="Correlation name",
     )
     parser.add_argument(
         "-l", "--localization", type=float, default=.25,
         help="rakeness localization factor (default: %(default)s)",
+    )
+    parser.add_argument(
+        "--eta", type=float, nargs='+', 
+        help="energy fraction the support must retain (GR algorithm only)",
     )
     parser.add_argument(
         "-p", "--processes", type=int,
@@ -112,33 +115,49 @@ def cmdline_args():
     return parser.parse_args()
 
 
-def main(m_list, seed_list, isnr, method, mode, orth, corr, loc, seed, processes):
+def main(
+    m_list, 
+    seed_list, 
+    isnr, 
+    method, 
+    mode, 
+    orth, 
+    corr, 
+    loc, 
+    eta_list, 
+    processes
+):
     ############################################################################
     # PATHs                                                                    #
     ############################################################################
 
+    # dataset
     if not os.path.exists(dataset_dir):
         os.mkdir(dataset_dir)
 
     data_name = f'ecg_N={N}_n={n}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}'\
                 f'_isnr={isnr}_seed={ecg_seed}'
     data_path = os.path.join(dataset_dir, data_name + '.pkl')
+    data_dir = os.path.join(dataset_dir, data_name)
 
-    folder = os.path.join(dataset_dir, data_name)
-    if not os.path.exists(folder):
-        os.mkdir(folder)
+    # RSNR
+    rsnr_path = os.path.join(data_dir, f'rsnr_method={method}_mode={mode}.pkl')
 
-    rsnr_path = os.path.join(folder, f'rsnr_method={method}.pkl')
+    # supports
+    if method == 'GR':
+        _name = lambda eta: f'supports_method={method}_eta={eta}.pkl'
+        supports_path = lambda eta: os.path.join(data_dir, _name(eta))
 
-    if mode == 'standard':
-        supports_path = lambda m, seed: os.path.join(
-            folder, f'supports_method={method}_mode={mode}_m={m}_orth={orth}'\
-                    f'_seed={seed}.pkl')
-        
-    elif mode == 'rakeness':
-        supports_path = lambda m, seed: os.path.join(
-            folder, f'supports_method={method}_mode={mode}_m={m}'\
-                    f'_corr={corr}_loc={loc}_orth={orth}_seed={seed}.pkl')
+    elif method in ('TSOC', 'TSOC2'):
+        if mode == 'standard':
+            _name = lambda m, seed: \
+                f'supports_method={method}_mode={mode}_m={m}_orth={orth}'\
+                f'_seed={seed}.pkl'
+        elif mode == 'rakeness':
+            _name = lambda m, seed: \
+                f'supports_method={method}_mode={mode}_m={m}_corr={corr}'\
+                f'_loc={loc}_orth={orth}_seed={seed}.pkl'
+        supports_path = lambda m, seed: os.path.join(data_dir, _name(m, seed))
 
 
     ############################################################################
@@ -148,7 +167,6 @@ def main(m_list, seed_list, isnr, method, mode, orth, corr, loc, seed, processes
     # loading data
     if not os.path.exists(data_path):
         raise RuntimeError(f'dataset {data_path} not available')
-
     logger.debug(f'loading data from {data_path}')
     with open(data_path, 'rb') as f:
         X = pickle.load(f)
@@ -157,7 +175,6 @@ def main(m_list, seed_list, isnr, method, mode, orth, corr, loc, seed, processes
     D = wavelet_basis(n, 'sym6', level=2)
 
     # load ECG correlation matrix
-    C = None  # if mode is not rakeness, corr is set to None
     if mode == 'rakeness':
         corr_path = os.path.join(dataset_dir, 'correlation', corr + '.pkl')
         if not os.path.exists(corr_path):
@@ -170,11 +187,15 @@ def main(m_list, seed_list, isnr, method, mode, orth, corr, loc, seed, processes
     # Compute supports and RSNR                                                #
     ############################################################################
 
-    columns = pd.MultiIndex.from_product(
-        ([mode], m_list, [orth], seed_list), 
-        names=('mode', 'm', 'orth', 'seed'),
-    )
+    # build columns (pandas.MultiIndex) that contains all configurations for
+    # which we compute RSNR. Each multiindex level corresponds to a parameter.
+    columns = {'m': m_list, 'orth': [orth], 'seed': seed_list, }
+    if method == 'GR': columns = {**columns, 'eta': eta_list}
+    if mode == 'rakeness': columns = {**columns, 'corr': [corr], 'loc': [loc]}
+    columns = pd.MultiIndex.from_product(columns.values(), names=columns.keys())
 
+    # load already computed RSNR and remove those configurations for which
+    # RSNR has been already computed
     if os.path.exists(rsnr_path):
         logger.debug(f'loading RSNR from {rsnr_path}')
         df = pd.read_pickle(rsnr_path)
@@ -182,45 +203,113 @@ def main(m_list, seed_list, isnr, method, mode, orth, corr, loc, seed, processes
         if len(todrop) > 0:
             columns = columns.drop(todrop)
 
-    for i, (_, m, _, seed) in tqdm(list(enumerate(columns))):
+    # RSNR computation differs depending on the supports
+    if method == 'GR':
 
-        # Generate Sensing Matrix and set Compressed Sensing system
-        logger.debug(f'generating sensing matrix ({m}, {n}), seed={seed}')
-        A = generate_sensing_matrix(
-            (m, n), mode=mode, orthogonal=orth, 
-            correlation=C, loc=loc, seed=seed)
-        cs = CompressedSensing(A, D)
+        # iterate over m and seed. 
+        # eta does not depend on compression therefore all different eta are 
+        # considered in an internal loop after setting up compression
+        cols = columns.droplevel('eta').unique()
+        for i, _col in enumerate(cols):
+            m = _col[cols.names.index('m')]
+            seed = _col[cols.names.index('seed')]
 
-        _supports_path = supports_path(m, seed)
-        if not os.path.exists(_supports_path):
-            raise RuntimeError(f'supports {_supports_path} not available')
-        logger.debug(f'loading supports {_supports_path}')
-        with open(_supports_path, 'rb') as f:
-            S = pickle.load(f)
-        
-        # Compute measurements
-        logger.debug(f'encoding signals')
-        Y = cs.encode(X)
+            # generate sensing matrix and set up Compressed Sensing
+            logger.debug(f'generating sensing matrix ({m}, {n}), seed={seed}')
+            kwargs = {'mode': mode, 'orthogonal': orth, 'seed': seed}
+            if mode == 'rakeness':
+                kwargs = {**kwargs, 'correlation': C, 'loc': loc}
+            A = generate_sensing_matrix((m, n), **kwargs)
+            cs = CompressedSensing(A, D)
 
-        # reconstruct signal
-        logger.debug(f'reconstructing signals')
-        X_hat = cs.decode(Y, S)
+            # Compute measurements
+            logger.debug(f'encoding data')
+            Y = cs.encode(X)
 
-        # compute RSNR
-        logger.debug(f'computing RSNR')
-        _rsnr = compute_rsnr(X, X_hat)
-        rsnr = pd.DataFrame(data=_rsnr, columns=columns[[i]])
+            rsnr = []  # store rsnr columns to be concatenated
+            # iterate over etas corresponding to selected m and seed
+            eta_cols = columns.get_loc_level((m, seed), level=('m', 'seed'))[1]
+            desc = f'{m}, {seed}'
+            for eta in tqdm(eta_cols.get_level_values('eta'), desc=desc):
 
-        # store intermediate results
-        if os.path.exists(rsnr_path):
-            # re-load stored RSNR as it might have been updated by another 
-            # process running in parallel
-            logger.debug(f'loading RSNR from {rsnr_path}')
-            df = pd.read_pickle(rsnr_path)
-            rsnr = pd.concat((df, rsnr), axis=1).sort_index(axis=1)
+                # load supports
+                if not os.path.exists(supports_path(eta)):
+                    raise RuntimeError(f'{supports_path(eta)} not available')
+                logger.debug(f'loading supports')
+                with open(supports_path(eta), 'rb') as f:
+                    S = pickle.load(f)
 
-        logger.debug(f'storing RSNR')
-        rsnr.to_pickle(rsnr_path)
+                # reconstruct signal
+                logger.debug(f'reconstructing signals')
+                X_hat = cs.decode(Y, s=S, processes=processes)
+
+                # compute RSNR
+                logger.debug(f'computing RSNR')
+                _rsnr = compute_rsnr(X, X_hat)
+                col = pd.MultiIndex.from_tuples(
+                    tuples=[(*_col, eta)], names=(*cols.names, 'eta'))
+                rsnr.append(pd.DataFrame(data=_rsnr, columns=col))
+            
+            rsnr = pd.concat(rsnr, axis=1)
+            
+            # store intermediate results
+            if os.path.exists(rsnr_path):
+                # re-load stored RSNR as it might have been updated by another 
+                # process running in parallel
+                logger.debug(f'loading RSNR from {rsnr_path}')
+                df = pd.read_pickle(rsnr_path)
+                rsnr = pd.concat((df, rsnr), axis=1).sort_index(axis=1)
+
+            # store intermediate results
+            logger.debug(f'storing RSNR')
+            rsnr.to_pickle(rsnr_path)
+    
+    elif method in ('TSOC', 'TSOC2'):
+
+        # iterate over all configurations
+        for i, _col in enumerate(columns):
+            m = _col[columns.names.index('m')]
+            seed = _col[columns.names.index('seed')]
+
+            # generate sensing matrix and set up Compressed Sensing
+            logger.debug(f'generating sensing matrix ({m}, {n}), seed={seed}')
+            A = generate_sensing_matrix(
+                (m, n), mode=mode, orthogonal=orth, 
+                correlation=C, loc=loc, seed=seed)
+            cs = CompressedSensing(A, D)
+
+            # load supports
+            _path = supports_path(m, seed)
+            if not os.path.exists(_path):
+                raise RuntimeError(f'supports {_path} not available')
+            logger.debug(f'loading supports {_path}')
+            with open(_path, 'rb') as f:
+                S = pickle.load(f)
+            
+            # Compute measurements
+            logger.debug(f'encoding signals')
+            Y = cs.encode(X)
+
+            # reconstruct signal
+            logger.debug(f'reconstructing signals')
+            X_hat = cs.decode(Y, S)
+
+            # compute RSNR
+            logger.debug(f'computing RSNR')
+            _rsnr = compute_rsnr(X, X_hat)
+            rsnr = pd.DataFrame(data=_rsnr, columns=columns[[i]])
+            
+            # store intermediate results
+            if os.path.exists(rsnr_path):
+                # re-load stored RSNR as it might have been updated by another 
+                # process running in parallel
+                logger.debug(f'loading RSNR from {rsnr_path}')
+                df = pd.read_pickle(rsnr_path)
+                rsnr = pd.concat((df, rsnr), axis=1).sort_index(axis=1)
+                rsnr = rsnr.loc[:,~rsnr.columns.duplicated()].copy()
+
+            logger.debug(f'storing RSNR')
+            rsnr.to_pickle(rsnr_path)
 
 
 if __name__ == '__main__':
@@ -245,7 +334,7 @@ if __name__ == '__main__':
         args.orthogonal,
         args.correlation,
         args.localization,
-        args.seed,
+        args.eta,
         args.processes,
     )
     
