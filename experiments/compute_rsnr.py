@@ -190,8 +190,8 @@ def main(
     # build columns (pandas.MultiIndex) that contains all configurations for
     # which we compute RSNR. Each multiindex level corresponds to a parameter.
     columns = {'m': m_list, 'orth': [orth], 'seed': seed_list, }
-    if method == 'GR': columns = {**columns, 'eta': eta_list}
     if mode == 'rakeness': columns = {**columns, 'corr': [corr], 'loc': [loc]}
+    if method == 'GR': columns = {**columns, 'eta': eta_list}
     columns = pd.MultiIndex.from_product(columns.values(), names=columns.keys())
 
     # load already computed RSNR and remove those configurations for which
@@ -259,6 +259,7 @@ def main(
                 logger.debug(f'loading RSNR from {rsnr_path}')
                 df = pd.read_pickle(rsnr_path)
                 rsnr = pd.concat((df, rsnr), axis=1).sort_index(axis=1)
+                rsnr = rsnr.loc[:,~rsnr.columns.duplicated()].copy()
 
             # store intermediate results
             logger.debug(f'storing RSNR')
@@ -267,15 +268,16 @@ def main(
     elif method in ('TSOC', 'TSOC2'):
 
         # iterate over all configurations
-        for i, _col in enumerate(columns):
+        for i, _col in tqdm(list(enumerate(columns))):
             m = _col[columns.names.index('m')]
             seed = _col[columns.names.index('seed')]
 
             # generate sensing matrix and set up Compressed Sensing
             logger.debug(f'generating sensing matrix ({m}, {n}), seed={seed}')
-            A = generate_sensing_matrix(
-                (m, n), mode=mode, orthogonal=orth, 
-                correlation=C, loc=loc, seed=seed)
+            kwargs = {'mode': mode, 'orthogonal': orth, 'seed': seed}
+            if mode == 'rakeness':
+                kwargs = {**kwargs, 'correlation': C, 'loc': loc}
+            A = generate_sensing_matrix((m, n), **kwargs)
             cs = CompressedSensing(A, D)
 
             # load supports
@@ -292,7 +294,7 @@ def main(
 
             # reconstruct signal
             logger.debug(f'reconstructing signals')
-            X_hat = cs.decode(Y, S)
+            X_hat = cs.decode(Y, S, processes=processes)
 
             # compute RSNR
             logger.debug(f'computing RSNR')
