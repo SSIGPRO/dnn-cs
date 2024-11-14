@@ -161,7 +161,6 @@ for mode, m, orth, seed in columns.droplevel('eta').unique():
                 args_list = product(X, [D], [eta])
                 with mp.Pool(processes=processes) as pool:
                     S = pool.starmap(find_support_GR, args_list, chunksize=20)
-                S = np.stack(S)
             S = np.stack(S)
             logger.debug(f'storing supports')
             with open(supports_path(eta), 'wb') as f:
