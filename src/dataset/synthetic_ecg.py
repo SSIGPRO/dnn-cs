@@ -51,7 +51,7 @@ def generate_ecg(
     snr=None, 
     random_state=None,
     verbose=False,
-    processes=1,
+    processes=None,
 ):
     '''
     Generate ECG Dataset
