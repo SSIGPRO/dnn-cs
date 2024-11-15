@@ -1,5 +1,5 @@
 import numpy as np
-from scipy import linalg
+from numpy import linalg
 
 
 def compute_rsnr(x, x_hat, axis=-1):
