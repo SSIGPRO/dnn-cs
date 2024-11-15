@@ -1,3 +1,7 @@
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
 class ClippedCrossEntropyLoss(nn.Module):
     
     def __init__(self, epsilon=1e-7, reduction='mean'):
