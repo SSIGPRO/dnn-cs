@@ -153,7 +153,7 @@ def main(isnr, method, mode, orth, m, corr, loc, seed, eta_list, processes):
     D = wavelet_basis(n, 'sym6', level=2)
 
     ############################################################################
-    # Compute supports                                      #
+    # Compute supports                                                         #
     ############################################################################
     if method == 'GR':
         

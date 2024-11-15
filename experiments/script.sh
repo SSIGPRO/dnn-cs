@@ -1,5 +1,10 @@
 #!/bin/bash
 
+
+################################################################################
+# Computation of ECG Correlation matrix                                        #
+################################################################################
+
 # n=128
 # N_corr=100000
 # fs=256
@@ -23,9 +28,10 @@
 #     -vv
 
 
-# isnr=35           # 25, 35, 45
-# algorithm=GR      # GR, TSOC, TSOC2
-# encoder=rakeness  # standard, rakeness
+################################################################################
+# Computation of ECG Supports and RSNR (GR, TSOC                               #
+################################################################################
+
 # corr=96af96a7ddfcb2f6059092c250e18f2a
 # loc=0.25
 
@@ -39,41 +45,62 @@
 #     0.99993 0.99995 0.99997 0.99998 0.999985 0.99999
 # )
 
-# for m in "${m_list[@]}"
+# for isnr in 35 25 45
 # do
-#     for seed in "${seed_list[@]}"
+#     for encoder in "standard" "rakeness"
 #     do
-#         python experiments/compute_supports.py \
-#             --isnr $isnr \
-#             --algorithm $algorithm \
-#             --encoder $encoder \
-#             --orthogonal \
-#             --measurements $m \
-#             --correlation $corr \
-#             --localization $loc \
-#             --seed $seed \
-#             # --processes \
-#             # --vv
+#         # for algorithm in "GR" "TSOC"
+#         # do
+#             for m in "${m_list[@]}"
+#             do
+#                 for seed in "${seed_list[@]}"
+#                 do
+#                     echo $isnr $encoder $algorithm $m $seed
+#                     python experiments/compute_supports.py \
+#                         --isnr $isnr \
+#                         --algorithm $algorithm \
+#                         --encoder $encoder \
+#                         --measurements $m \
+#                         --correlation $corr \
+#                         --localization $loc \
+#                         --eta "${eta_list[@]}" \
+#                         --seed $seed \
+#                         # --orthogonal \
+#                         # --processes \
+#                         # --vv
+#                 done
+#             done
+#         # done
 #     done
 # done
 
-# echo "RSNR"
-# python experiments/compute_rsnr.py \
-#     --measurements "${m_list[@]}" \
-#     --seed "${seed_list[@]}" \
-#     --isnr $isnr \
-#     --algorithm $algorithm \
-#     --encoder $encoder \
-#     --orthogonal \
-#     --correlation $corr \
-#     --localization $loc \
-#     --eta "${eta_list[@]}" \
-#     # --processes \
-#     # --vv
+# for isnr in 35 25 45
+# do
+#     for encoder in "standard" "rakeness"
+#     do
+#         for algorithm in "GR" "TSOC"
+#         do
+#             echo $isnr $encoder $algorithm
+#             python experiments/compute_rsnr.py \
+#                 --measurements "${m_list[@]}" \
+#                 --seed "${seed_list[@]}" \
+#                 --isnr $isnr \
+#                 --algorithm $algorithm \
+#                 --encoder $encoder \
+#                 --correlation $corr \
+#                 --localization $loc \
+#                 --eta "${eta_list[@]}" \
+#                 # --orthogonal \
+#                 # --processes \
+#                 # --vv \
+#         done
+#     done
+# done
 
 
-
-###############################################################################
+################################################################################
+# Computation of ECG Supports and RSNR (TSOC2)                                 #
+################################################################################
 
 
 corr=96af96a7ddfcb2f6059092c250e18f2a
@@ -81,63 +108,40 @@ loc=0.25
 
 m_list=(16 32 48 64)
 seed_list=($(seq 0 19))
-eta_list=(
-    0.9 
-    0.93    0.95    0.97    0.98    0.985    0.99 
-    0.993   0.995   0.997   0.998   0.9985   0.999 
-    0.9993  0.9995  0.9997  0.9998  0.99985  0.9999 
-    0.99993 0.99995 0.99997 0.99998 0.999985 0.99999
-)
 
-algorithm="TSOC"
-for isnr in 35 25 45
-do
-    for encoder in "standard" "rakeness"
-    do
-        # for algorithm in "GR" "TSOC"
-        # do
-            for m in "${m_list[@]}"
-            do
-                for seed in "${seed_list[@]}"
-                do
-                    echo $isnr $encoder $algorithm $m $seed
-                    python experiments/compute_supports.py \
-                        --isnr $isnr \
-                        --algorithm $algorithm \
-                        --encoder $encoder \
-                        --measurements $m \
-                        --correlation $corr \
-                        --localization $loc \
-                        --eta "${eta_list[@]}" \
-                        --seed $seed \
-                        # --orthogonal \
-                        # --processes \
-                        # --vv
-                done
-            done
-        # done
-    done
-done
+isnr=35
+encoder="standard"
+algorithm="TSOC2"
 
-for isnr in 35 25 45
+for encoder in "standard" "rakeness"
 do
-    for encoder in "standard" "rakeness"
+    for m in "${m_list[@]}"
     do
-        for algorithm in "GR" "TSOC"
+        for seed in "${seed_list[@]}"
         do
-            echo $isnr $encoder $algorithm
-            python experiments/compute_rsnr.py \
-                --measurements "${m_list[@]}" \
-                --seed "${seed_list[@]}" \
+            echo $isnr $encoder $algorithm $m $seed
+            python experiments/compute_supports.py \
                 --isnr $isnr \
                 --algorithm $algorithm \
                 --encoder $encoder \
-                --orthogonal \
+                --measurements $m \
                 --correlation $corr \
                 --localization $loc \
-                --eta "${eta_list[@]}" \
+                --seed $seed \
+                --orthogonal \
                 # --processes \
-                # --vv \
+                # --vv
         done
     done
 done
+
+echo $isnr $encoder $algorithm
+python experiments/compute_rsnr.py \
+    --measurements "${m_list[@]}" \
+    --seed "${seed_list[@]}" \
+    --isnr $isnr \
+    --algorithm $algorithm \
+    --encoder $encoder \
+    --orthogonal \
+    # --processes \
+    # --vv \
