@@ -5,6 +5,7 @@ from cs.wavelet_basis import wavelet_basis
 from cs.utils import reconstructor
 from cs import CompressedSensing, generate_sensing_matrix
 from models.tsoc import TSOC
+from wombats.detectors._base import Detector
 
 class TSOCDetector(Detector):
 
