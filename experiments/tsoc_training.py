@@ -95,8 +95,8 @@ def training(
     tsoc = TSOC(n, m)
     tsoc.to(device) # move the network to GPU
     file_model = f'TSOC-N={N}_n={n}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}'\
-                f'_isnr={isnr}-epochs={epochs}-bs={batch_size}-opt=sgd-lr={lr}'\
-                f'_th={threshold}_tf={train_fraction}_minlr={min_lr}-p={patience}'\
+                f'_isnr={isnr}_mode={mode}_ort={orthogonal}epochs={epochs}_bs={batch_size}_opt=sgd_lr={lr}'\
+                f'_th={threshold}_tf={train_fraction}_minlr={min_lr}_p={patience}'\
                 f'_mind={min_delta}_seed={seed}.pth'
     
     # ------------------ Trining loop ------------------
