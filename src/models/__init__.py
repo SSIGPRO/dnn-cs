@@ -1,0 +1,1 @@
+models_dir = '/srv/newpenny/dnn-cs/tsoc/models/'
