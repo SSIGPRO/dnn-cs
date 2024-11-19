@@ -156,7 +156,6 @@ m_list=(16 32 48 64) # List of measurements
 seed_list=($(seq 0 5)) # List of seeds
 isnr=35             # Signal-to-noise ratio (SNR)
 mode="standard"     # Encoder mode, change to 'rakeness' if needed
-encoder="TSOC"      # Algorithm used
 gpu=3               # GPU index
 train_fraction=0.9  # Fraction of data used for training
 factor=0.2          # Factor for ReduceLROnPlateau scheduler
@@ -182,14 +181,14 @@ do
     do
         for seed in "${seed_list[@]}"
         do
-            echo "Running with ISNR=$isnr, Encoder=$encoder, Mode=$mode, Measurements=$m, Seed=$seed, \
+            echo "Running TSOC training with ISNR=$isnr, Mode=$mode, Measurements=$m, Seed=$seed, \
             N=$N, Basis=$basis, FS=$fs, HeartRate=($heart_rate), Processes=$processes, \
             Threshold=$threshold, GPU=$gpu, TrainFraction=$train_fraction, \
             Factor=$factor, MinLR=$min_lr, MinDelta=$min_delta, Patience=$patience"
 
             
             # Run the training script with the selected configuration
-            python tosc_training.py \
+            python tsoc_training.py \
                 --n $n \
                 --m $m \
                 --epochs $epochs \
