@@ -35,7 +35,7 @@ def training(
         fs = 256,             
         heart_rate = (60, 100), 
         isnr = 35,
-        mode = 'standard'
+        mode = 'standard',
         orthogonal = False,           
         seed = 0,   
         processes = 48,
@@ -95,7 +95,7 @@ def training(
     tsoc = TSOC(n, m)
     tsoc.to(device) # move the network to GPU
     file_model = f'TSOC-N={N}_n={n}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}'\
-                f'_isnr={isnr}_mode={mode}_ort={orthogonal}epochs={epochs}_bs={batch_size}_opt=sgd_lr={lr}'\
+                f'_isnr={isnr}_mode={mode}_ort={orthogonal}_epochs={epochs}_bs={batch_size}_opt=sgd_lr={lr}'\
                 f'_th={threshold}_tf={train_fraction}_minlr={min_lr}_p={patience}'\
                 f'_mind={min_delta}_seed={seed}.pth'
     
