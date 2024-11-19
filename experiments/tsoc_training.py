@@ -67,7 +67,7 @@ def training(
 
     # ------------------ Compressed Sensing ------------------
     D = wavelet_basis(n, basis, level=2)
-    A = generate_sensing_matrix((m, n), mode='standard', seed=seed, orthogonal=orthogonal)
+    A = generate_sensing_matrix((m, n), mode='standard', orthogonal=orthogonal, loc=.25, seed=seed)
     cs = CompressedSensing(A, D)
     Y = cs.encode(X)  # measurements
 
@@ -170,7 +170,7 @@ def training(
         # save trained model
         torch.save(tsoc.state_dict(), file_model)
 
-
+# ------------------ Perser definition ------------------
 def parse_args():
     parser = argparse.ArgumentParser(description="Training Script for TSOC Model with Compressed Sensing")
 
@@ -199,6 +199,7 @@ def parse_args():
     
     return parser.parse_args()
 
+# ------------------ Main call ------------------
 if __name__ == '__main__':
     # Parse the command-line arguments
     args = parse_args()
