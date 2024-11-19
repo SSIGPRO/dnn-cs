@@ -77,9 +77,10 @@ class TSOCDetector(Detector):
             # encode reconstructed test data
             Yhat = self.cs.encode(Xhat)
 
-        else:
-            raise ValueError(f'mode "{self.mode}" not supported')
-
             # estiamte the difference between the encoded reconstructed data and encoded data 
             score = np.sqrt(np.sum((Yhat - Y)**2, axis = -1))
+
+        else:
+            raise ValueError(f'mode "{self.mode}" not supported')
+        
         return score
