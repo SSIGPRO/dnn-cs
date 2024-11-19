@@ -152,8 +152,8 @@
 
 # Configuration Section
 n=128               # Number of samples per signal
-m_list=(16 32 48 64) # List of measurements
-seed_list=($(seq 0 5)) # List of seeds
+m=32                # Number of measurements
+seed=0              # Random seed for reproducibility
 isnr=35             # Signal-to-noise ratio (SNR)
 mode="standard"     # Encoder mode, change to 'rakeness' if needed
 gpu=3               # GPU index
@@ -170,47 +170,41 @@ basis="sym6"        # Wavelet basis function
 fs=256              # Sampling frequency
 heart_rate="60 100" # Heart rate range
 threshold=0.5       # Threshold for metrics
-orthogonal=true     # Whether to use orthogonalized matrix
+orthogonal=True    # Whether to use orthogonalized matrix
 processes=48        # Number of CPU processes for parallelism
-# End of Configuration Section
 
-# Loop through the configurations
-for mode in "standard" "rakeness"
-do
-    for m in "${m_list[@]}"
-    do
-        for seed in "${seed_list[@]}"
-        do
-            echo "Running TSOC training with ISNR=$isnr, Mode=$mode, Measurements=$m, Seed=$seed, \
-            N=$N, Basis=$basis, FS=$fs, HeartRate=($heart_rate), Processes=$processes, \
-            Threshold=$threshold, GPU=$gpu, TrainFraction=$train_fraction, \
-            Factor=$factor, MinLR=$min_lr, MinDelta=$min_delta, Patience=$patience"
+echo "Running TSOC training with ISNR=$isnr, Mode=$mode, Orthogonalization=$orthogonal, Measurements=$m, \
+Seed=$seed, TrainingInstances=$N, Basis=$basis, FS=$fs, HeartRate=($heart_rate), Processes=$processes, \
+Threshold=$threshold, GPU=$gpu, TrainFraction=$train_fraction, \
+Factor=$factor, MinLR=$min_lr, MinDelta=$min_delta, Patience=$patience"
 
-            
-            # Run the training script with the selected configuration
-            python tsoc_training.py \
-                --n $n \
-                --m $m \
-                --epochs $epochs \
-                --lr $lr \
-                --batch_size $batch_size \
-                --N $N \
-                --basis $basis \
-                --fs $fs \
-                --heart_rate $heart_rate \
-                --isnr $isnr \
-                --mode $mode \
-                --orthogonal $orthogonal \
-                --seed $seed \
-                --processes $processes \
-                --threshold $threshold \
-                --gpu $gpu \
-                --train_fraction $train_fraction \
-                --factor $factor \
-                --min_lr $min_lr \
-                --min_delta $min_delta \
-                --patience $patience
-        done
-    done
-done
+if [ "$orthogonal" = "True" ]; then
+    orthogonal_flag="--orthogonal"
+else
+    orthogonal_flag=""
+fi
+
+# Run the training script with the selected configuration
+python tsoc_training.py \
+    --n $n \
+    --m $m \
+    --epochs $epochs \
+    --lr $lr \
+    --batch_size $batch_size \
+    --N $N \
+    --basis $basis \
+    --fs $fs \
+    --heart_rate $heart_rate \
+    --isnr $isnr \
+    --mode $mode \
+    $orthogonal_flag \
+    --seed $seed \
+    --processes $processes \
+    --threshold $threshold \
+    --gpu $gpu \
+    --train_fraction $train_fraction \
+    --factor $factor \
+    --min_lr $min_lr \
+    --min_delta $min_delta \
+    --patience $patience
 

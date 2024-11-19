@@ -47,6 +47,33 @@ def training(
         min_delta = 1e-4,
         patience = 40,
 ):
+    
+    params_string = f"""
+    n = {n}
+    m = {m}
+    epochs = {epochs}
+    lr = {lr}
+    batch_size = {batch_size}
+    N = {N}
+    basis = {basis}
+    fs = {fs}
+    heart_rate = {heart_rate}
+    isnr = {isnr}
+    mode = {mode}
+    orthogonal = {orthogonal}
+    seed = {seed}
+    processes = {processes}
+    threshold = {threshold}
+    gpu = {gpu}
+    train_fraction = {train_fraction}
+    factor = {factor}
+    min_lr = {min_lr}
+    min_delta = {min_delta}
+    patience = {patience}
+    """
+
+    print(params_string)
+   
     # ------------------ Seeds ------------------
     np.random.seed(seed)
 
@@ -88,9 +115,10 @@ def training(
     train_dataset, val_dataset = random_split(dataset, [train_size, val_size], generator=generator)
 
     # Create data loaders for training and validation
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=processes)
-    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=processes)
-
+    # train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=processes)
+    # val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=processes)
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
     # ------------------ Neural Network initialization ------------------
     tsoc = TSOC(n, m)
     tsoc.to(device) # move the network to GPU
@@ -186,7 +214,7 @@ def parse_args():
     parser.add_argument('--heart_rate', '-hr', type=int, nargs=2, default=(60, 100), help="Heart rate range")
     parser.add_argument('--isnr', '-i', type=int, default=35, help="Signal-to-noise ratio (SNR)")
     parser.add_argument('--mode', '-md', type=str, choices=['standard', 'rakeness'], default='standard', help="Measurement matrix mode: 'standard' or 'rakeness'")
-    parser.add_argument('--orthogonal', '-o', type=bool, default=False, help="Use orthogonalized measurement matrix (default: False)")
+    parser.add_argument('--orthogonal', '-o', action='store_true', help="Use orthogonalized measurement matrix (default: False)")
     parser.add_argument('--seed', '-s', type=int, default=0, help="Random seed for reproducibility")
     parser.add_argument('--processes', '-p', type=int, default=48, help="Number of CPU processes")
     parser.add_argument('--threshold', '-t', type=float, default=0.5, help="Threshold for metrics")
