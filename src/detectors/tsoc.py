@@ -71,7 +71,7 @@ class TSOCDetector(Detector):
 
         if self.mode=='autoencoder':
             # estiamte the difference between the reconstructed data and data
-            score = np.sqrt(np.sum(Xhat - X_test)**2, axis = -1)
+            score = np.sqrt(np.sum((Xhat - X_test)**2, axis = -1))
         
         elif self.mode=='self-assessment':
             # encode reconstructed test data
