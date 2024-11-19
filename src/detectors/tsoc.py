@@ -9,27 +9,38 @@ from wombats.detectors._base import Detector
 
 class TSOCDetector(Detector):
 
-    def __init__(self, mode='self-assessment', **kwargs):
+    def __init__(self, n, m, model_path, seed, batch_size=100, mode='self-assessment', basis='sym6', gpu=None):
+        
+        # # extract parameters from model's name
+        # parts = model_name.split('_')
+        # self.n = int([part for part in parts if 'n' in part][0].split('=')[1])
+        # self.m = int([part for part in parts if 'm' in part][0].split('=')[1])
+        # self.seed = int([part for part in parts if 'seed' in part][0].split('=')[1])
+
+        self.n = n
+        self.m = m
+        self.seed = seed
+
         # init TSOC
-        self.tsoc = TSOC(kwargs['n'], kwargs['m'])
-        if 'device' in kwargs.keys():
-            self.gpu = kwargs['device']
-            self.tsoc.to(self.gpu) # move the network to GPU
+        self.tsoc = TSOC(self.n, self.m)
+        if gpu is not None :
+            self.gpu = gpu
+            self.tsoc.to(self.gpu) # move the network to specified device
         else:
             self.gpu = None
-        self.file_model = f"TSOC-N={kwargs['N_train']}_n={kwargs['n']}_fs={kwargs['fs']}_hr={kwargs['heart_rate'][0]}-{kwargs['heart_rate'][1]}"\
-                        f"_isnr={kwargs['isnr']}_seed={kwargs['seed']}-epochs={kwargs['epochs']}-bs={kwargs['batch_size']}-lr={kwargs['lr']}.pth"
+        self.model_path = model_path
         # init Compressed Sensing
-        self.A = generate_sensing_matrix((kwargs['m'], kwargs['n']), seed=kwargs['seed'])
-        self.D = wavelet_basis(n, basis='sym6', level=2)
+        self.A = generate_sensing_matrix((self.m, self.n), seed=self.seed)
+        self.D = wavelet_basis(self.n, basis, level=2)
         self.cs = CompressedSensing(self.A, self.D)
         # batch_size for evaluation
-        self.batch_size = 100
+        self.batch_size = batch_size
         self.mode = mode
+        self.basis = basis
             
-    def fit(self):
+    def fit(self, *args, **kwargs):
         # load trained TSOC model
-        self.tsoc.load_state_dict(torch.load(self.file_model, weights_only=True))
+        self.tsoc.load_state_dict(torch.load(self.model_path, weights_only=True))
         return self
     
     def score(self, X_test):
