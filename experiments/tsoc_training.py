@@ -31,7 +31,7 @@ def training(
 ):
    
     # ------------------ Seeds ------------------
-    np.random.seed(seed)gt
+    np.random.seed(seed)
 
     # Set the seed for PyTorch (CPU)
     torch.manual_seed(seed)
