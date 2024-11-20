@@ -49,7 +49,7 @@ def training(
 ):
    
     # ------------------ Seeds ------------------
-    np.random.seed(seed)
+    np.random.seed(seed)gt
 
     # Set the seed for PyTorch (CPU)
     torch.manual_seed(seed)
@@ -96,7 +96,7 @@ def training(
     # ------------------ Neural Network initialization ------------------
     tsoc = TSOC(n, m)
     tsoc.to(device) # move the network to GPU
-    file_model = f'TSOC-N={N}_n={n}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}'\
+    file_model = f'TSOC-N={N}_n={n}_m={m}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}'\
                 f'_isnr={isnr}_mode={mode}_ort={orthogonal}_epochs={epochs}_bs={batch_size}_opt=sgd_lr={lr}'\
                 f'_th={threshold}_tf={train_fraction}_minlr={min_lr}_p={patience}'\
                 f'_mind={min_delta}_seed={seed}.pth'
