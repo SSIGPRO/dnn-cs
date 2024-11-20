@@ -34,7 +34,8 @@ from detectors.tsoc import TSOCDetector
 def test(
     n, m, epochs, lr, batch_size, N_train, basis, fs, heart_rate, isnr, mode, 
     orthogonal, seed, processes, threshold, gpu, train_fraction, factor, min_lr, 
-    min_delta, patience, detector_type, delta, N_test, detector_mode, **kwargs
+    min_delta, patience, detector_type, delta, N_test, detector_mode, 
+    k, order, kernel, nu, neighbors, estimators
 ):
     # ------------------ Show parameter values ------------------
     print(
@@ -321,7 +322,14 @@ if __name__ == "__main__":
         delta=args.delta,
         N_test=args.N_test,
         detector_mode=args.detector_mode,
+        k=args.k,
+        order=args.order,
+        kernel=args.kernel,
+        nu=args.nu,
+        neighbors=args.neighbors,
+        estimators=args.estimators
     )
+
 
 
     
