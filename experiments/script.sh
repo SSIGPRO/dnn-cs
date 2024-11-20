@@ -151,64 +151,158 @@
 ################################################################################
 
 # Configuration Section
+# n=128               # Number of samples per signal
+# # m=32                # Number of measurements
+# m_list=(16 32 48 64)
+# seed=0              # Random seed for reproducibility
+# isnr=35             # Signal-to-noise ratio (SNR)
+# mode="standard"     # Encoder mode, change to 'rakeness' if needed
+# gpu=3               # GPU index
+# train_fraction=0.9  # Fraction of data used for training
+# factor=0.2          # Factor for ReduceLROnPlateau scheduler
+# min_lr=0.001        # Minimum learning rate
+# min_delta=1e-4      # Minimum delta for early stopping and ReduceLROnPlateau
+# patience=40         # Patience for early stopping
+# epochs=500          # Number of training epochs
+# lr=0.1              # Learning rate
+# batch_size=50       # Batch size for training
+# N=2000000           # Number of training instances
+# basis="sym6"        # Wavelet basis function
+# fs=256              # Sampling frequency
+# heart_rate="60 100" # Heart rate range
+# threshold=0.5       # Threshold for metrics
+# orthogonal=False    # Whether to use orthogonalized matrix
+# processes=48        # Number of CPU processes for parallelism
+
+# for m in "${m_list[@]}"
+#     do
+#         echo "Running TSOC training with ISNR=$isnr, Mode=$mode, Orthogonalization=$orthogonal, Measurements=$m, \
+#         Seed=$seed, TrainingInstances=$N, Basis=$basis, FS=$fs, HeartRate=($heart_rate), Processes=$processes, \
+#         Threshold=$threshold, GPU=$gpu, TrainFraction=$train_fraction, \
+#         Factor=$factor, MinLR=$min_lr, MinDelta=$min_delta, Patience=$patience"
+
+#         if [ "$orthogonal" = "True" ]; then
+#             orthogonal_flag="--orthogonal"
+#         else
+#             orthogonal_flag=""
+#         fi
+
+#         # Run the training script with the selected configuration
+#         python tsoc_training.py \
+#             --n $n \
+#             --m $m \
+#             --epochs $epochs \
+#             --lr $lr \
+#             --batch_size $batch_size \
+#             --N $N \
+#             --basis $basis \
+#             --fs $fs \
+#             --heart_rate $heart_rate \
+#             --isnr $isnr \
+#             --mode $mode \
+#             $orthogonal_flag \
+#             --seed $seed \
+#             --processes $processes \
+#             --threshold $threshold \
+#             --gpu $gpu \
+#             --train_fraction $train_fraction \
+#             --factor $factor \
+#             --min_lr $min_lr \
+#             --min_delta $min_delta \
+#             --patience $patience
+#     done
+
+
+################################################################################
+# Anomaly Detection Evaluation Script for Multiple Configurations               #
+################################################################################
+
+# Configuration Section
 n=128               # Number of samples per signal
-# m=32                # Number of measurements
-m_list=(16 32 48 64)
+m=32              # Number of measurements
 seed=0              # Random seed for reproducibility
 isnr=35             # Signal-to-noise ratio (SNR)
 mode="standard"     # Encoder mode, change to 'rakeness' if needed
-gpu=3               # GPU index
+N_train=2000000     # Number of training instances
+N_test=10000        # Number of test instances
 train_fraction=0.9  # Fraction of data used for training
-factor=0.2          # Factor for ReduceLROnPlateau scheduler
-min_lr=0.001        # Minimum learning rate
-min_delta=1e-4      # Minimum delta for early stopping and ReduceLROnPlateau
-patience=40         # Patience for early stopping
-epochs=500          # Number of training epochs
-lr=0.1              # Learning rate
-batch_size=50       # Batch size for training
-N=2000000           # Number of training instances
 basis="sym6"        # Wavelet basis function
 fs=256              # Sampling frequency
 heart_rate="60 100" # Heart rate range
-threshold=0.5       # Threshold for metrics
-orthogonal=False    # Whether to use orthogonalized matrix
-processes=48        # Number of CPU processes for parallelism
+orthogonal=True     # Whether to use orthogonalized measurement matrix
+processes=48        # Number of CPU processes
+gpu=3               # GPU index for evaluation
 
-for m in "${m_list[@]}"
-    do
-        echo "Running TSOC training with ISNR=$isnr, Mode=$mode, Orthogonalization=$orthogonal, Measurements=$m, \
-        Seed=$seed, TrainingInstances=$N, Basis=$basis, FS=$fs, HeartRate=($heart_rate), Processes=$processes, \
-        Threshold=$threshold, GPU=$gpu, TrainFraction=$train_fraction, \
-        Factor=$factor, MinLR=$min_lr, MinDelta=$min_delta, Patience=$patience"
+detector_type="ZC"  # Detector type to evaluate (e.g., TSOC, SPE, OCSVM)
+delta=0.1           # Anomaly intensity parameter
 
-        if [ "$orthogonal" = "True" ]; then
-            orthogonal_flag="--orthogonal"
-        else
-            orthogonal_flag=""
-        fi
+# TSOC-specific configuration
+detector_mode="self-assessment"  # Mode of operation for TSOC
+factor=0.2                # Augmentation/scheduling factor
+min_lr=0.001              # Minimum learning rate for optimizers
+min_delta=1e-4            # Minimum change in monitored metric for early stopping
+patience=40               # Patience for early stopping
+epochs=500                # Number of epochs for training
+lr=0.1                    # Learning rate
+batch_size=50             # Batch size for training
+threshold=0.5             # Threshold for TSOC detector
 
-        # Run the training script with the selected configuration
-        python tsoc_training.py \
-            --n $n \
-            --m $m \
-            --epochs $epochs \
-            --lr $lr \
-            --batch_size $batch_size \
-            --N $N \
-            --basis $basis \
-            --fs $fs \
-            --heart_rate $heart_rate \
-            --isnr $isnr \
-            --mode $mode \
-            $orthogonal_flag \
-            --seed $seed \
-            --processes $processes \
-            --threshold $threshold \
-            --gpu $gpu \
-            --train_fraction $train_fraction \
-            --factor $factor \
-            --min_lr $min_lr \
-            --min_delta $min_delta \
-            --patience $patience
-    done
+# Standard detectors-related arguments
+# Parameter k for SPE, T2:
+k=5
+# Order parameter for AR detector:                       
+order=1
+# Parameters for OCSVM:                 
+kernel="rbf"              
+nu=0.5                    
+# Number of neighbors for LOF detector
+neighbors=10
+# Number of estimators for IF detector                      
+estimators=100                     
+
+echo "Running evaluation with ISNR=$isnr, Mode=$mode, Detector=$detector_type, Orthogonalization=$orthogonal, Measurements=$m, \
+Seed=$seed, TrainingInstances=$N_train, Basis=$basis, FS=$fs, HeartRate=($heart_rate), Processes=$processes, \
+Threshold=$threshold, GPU=$gpu, TrainFraction=$train_fraction, Factor=$factor, MinLR=$min_lr, MinDelta=$min_delta, \
+Patience=$patience, k=$k, Order=$order, Kernel=$kernel, Nu=$nu, Neighbors=$neighbors, Estimators=$estimators"
+
+if [ "$orthogonal" = "True" ]; then
+    orthogonal_flag="--orthogonal"
+else
+    orthogonal_flag=""
+fi
+
+# Run the evaluation script with the selected configuration
+python detector_evaluation.py \
+    --n $n \
+    --m $m \
+    --seed $seed \
+    --mode $mode \
+    --isnr $isnr \
+    --detector_type $detector_type \
+    --delta $delta \
+    --N_train $N_train \
+    --N_test $N_test \
+    --train_fraction $train_fraction \
+    --basis $basis \
+    --fs $fs \
+    --heart_rate "$heart_rate" \
+    $orthogonal_flag \
+    --processes $processes \
+    --gpu $gpu \
+    --detector_mode $detector_mode \
+    --factor $factor \
+    --min_lr $min_lr \
+    --min_delta $min_delta \
+    --patience $patience \
+    --epochs $epochs \
+    --lr $lr \
+    --batch_size $batch_size \
+    --threshold $threshold \
+    --k $k \
+    --order $order \
+    --kernel $kernel \
+    --nu $nu \
+    --neighbors $neighbors \
+    --estimators $estimators
+
 
