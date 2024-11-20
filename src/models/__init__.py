@@ -1,1 +1,1 @@
-models_dir = '/srv/newpenny/dnn-cs/tsoc/models/'
+models_dir = '/srv/newpenny/dnn-cs/tsoc/trained_models/'
