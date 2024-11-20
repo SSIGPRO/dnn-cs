@@ -48,8 +48,11 @@ def test(
         f"  threshold={threshold}, factor={factor}, min_lr={min_lr}, min_delta={min_delta}, patience={patience}\n"
         f"  detector_type={detector_type}, detector_mode={detector_mode}, delta={delta}"
     )
-    # ------------------ Unpack arguments ------------------
-    locals().update(vars(args))
+
+    # ------------------ Folders ------------------
+    detectors_folder = '/srv/newpenny/dnn-cs/tsoc/detectors/'
+    data_folder = '/srv/newpenny/dnn-cs/JETCAS2020/data/'
+    results_folder = '/srv/newpenny/dnn-cs/tsoc/results/TSOC/detection'
 
     # ------------------ Seeds ------------------
     np.random.seed(seed)
@@ -67,8 +70,8 @@ def test(
 
     # ------------------ Signal ------------------
     # load test data
-    data_name = os.path.join('../../newpenny/dnn-cs/JETCAS2020/data/',f'n{n}_ISNR', f'tsSet_n={n}_isnr={isnr}_no-sparse.h5')
-    with pd.HDFStore(data_name, mode='r') as store:
+    data_path = os.path.join(data_folder, f'n{n}_ISNR', f'tsSet_n={n}_isnr={isnr}_no-sparse.h5')
+    with pd.HDFStore(data_path, mode='r') as store:
         X = store.select('X').values.squeeze()
     X = X[:N_test]
     
@@ -205,9 +208,9 @@ def test(
             
 
         # fit the detector
-        model_name = f'{detector_label}_N={N_train}_n={n}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}'\
+        model_name = f'{detector_label}_N={N_train}_n={n}_m={m}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}'\
         f'_isnr={isnr}_seed={seed}.pkl'
-        model_path = os.path.join('..', 'notebooks', 'detectors', model_name)
+        model_path = os.path.join(detectors_folder, model_name)
         # load if already trained
         if os.path.exists(model_path):
             
@@ -215,8 +218,8 @@ def test(
                 detector = pickle.load(f)
         # fit
         else:
-            data_name = os.path.join('../../newpenny/dnn-cs/JETCAS2020/data/',f'n{n}_ISNR', f'trSet_n={n}_isnr={isnr}_no-sparse.h5')
-            with pd.HDFStore(data_name, mode='r') as store:
+            data_path = os.path.join(data_folder, f'n{n}_ISNR', f'trSet_n={n}_isnr={isnr}_no-sparse.h5')
+            with pd.HDFStore(data_path, mode='r') as store:
                 X_train = store.select('X').values.squeeze()
             Y_train = cs.encode(X_train)
 
@@ -246,9 +249,11 @@ def test(
         metric_value = detector.test(Zanom, metric='AUC')
         result.loc[anomaly_label] = metric_value
 
-    print(result)
+    results_path = os.path.join(results_folder, f'AUC-{detector_label}_N={N_train}_n={n}_m={m}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}'\
+        f'_isnr={isnr}_seed={seed}.pkl')
+    pd.to_pickle(result, results_path)
 
-# ------------------ Perser definition ------------------
+# ------------------ Parser definition ------------------
 def parse_args():
     parser = argparse.ArgumentParser(description="Evaluate various detectors for anomaly detection tasks.")
 
