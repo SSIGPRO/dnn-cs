@@ -47,32 +47,6 @@ def training(
         min_delta = 1e-4,
         patience = 40,
 ):
-    
-    params_string = f"""
-    n = {n}
-    m = {m}
-    epochs = {epochs}
-    lr = {lr}
-    batch_size = {batch_size}
-    N = {N}
-    basis = {basis}
-    fs = {fs}
-    heart_rate = {heart_rate}
-    isnr = {isnr}
-    mode = {mode}
-    orthogonal = {orthogonal}
-    seed = {seed}
-    processes = {processes}
-    threshold = {threshold}
-    gpu = {gpu}
-    train_fraction = {train_fraction}
-    factor = {factor}
-    min_lr = {min_lr}
-    min_delta = {min_delta}
-    patience = {patience}
-    """
-
-    print(params_string)
    
     # ------------------ Seeds ------------------
     np.random.seed(seed)
