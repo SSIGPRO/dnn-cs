@@ -25,27 +25,9 @@ from cs import CompressedSensing, generate_sensing_matrix
 
 
 def training(
-        n = 128,
-        m = 32,
-        epochs = 500,
-        lr = 0.1,
-        batch_size = 50,
-        N = 2_000_000,
-        basis = 'sym6',       
-        fs = 256,             
-        heart_rate = (60, 100), 
-        isnr = 35,
-        mode = 'standard',
-        orthogonal = False,           
-        seed = 0,   
-        processes = 48,
-        threshold = 0.5,
-        gpu = 3,
-        train_fraction = 0.9,
-        factor = 0.2,
-        min_lr = 0.001,
-        min_delta = 1e-4,
-        patience = 40,
+    n, m, epochs, lr, batch_size, N, basis, fs, heart_rate, isnr, mode, 
+    orthogonal, seed, processes, threshold, gpu, train_fraction, factor, 
+    min_lr, min_delta, patience
 ):
    
     # ------------------ Seeds ------------------
@@ -177,8 +159,11 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Training Script for TSOC Model with Compressed Sensing")
 
     # Short and long argument versions
-    parser.add_argument('-n', '--n', type=int, default=128, help="Number of samples per signal")
-    parser.add_argument('-m', '--m', type=int, default=32, help="Number of measurements")
+    parser.add_argument('--n', '-n' type=int, required=True, help="Number of samples per signal")
+    parser.add_argument('--m', '-m', type=int, required=True, help="Number of measurements")
+    parser.add_argument('--isnr', '-i', type=int, required=True, help="Signal-to-noise ratio (SNR)")
+    parser.add_argument('--mode', '-md', type=str, choices=['standard', 'rakeness'], required=True, help="Measurement matrix mode: 'standard' or 'rakeness'")
+    parser.add_argument('--seed', '-s', type=int, required=True, help="Random seed for reproducibility")
     parser.add_argument('--epochs', '-e', type=int, default=500, help="Number of training epochs")
     parser.add_argument('--lr', '-l', type=float, default=0.1, help="Learning rate")
     parser.add_argument('--batch_size', '-b', type=int, default=50, help="Batch size for training")
@@ -186,10 +171,7 @@ def parse_args():
     parser.add_argument('--basis', '-B', type=str, default='sym6', help="Wavelet basis function")
     parser.add_argument('--fs', '-f', type=int, default=256, help="Sampling frequency")
     parser.add_argument('--heart_rate', '-hr', type=int, nargs=2, default=(60, 100), help="Heart rate range")
-    parser.add_argument('--isnr', '-i', type=int, default=35, help="Signal-to-noise ratio (SNR)")
-    parser.add_argument('--mode', '-md', type=str, choices=['standard', 'rakeness'], default='standard', help="Measurement matrix mode: 'standard' or 'rakeness'")
     parser.add_argument('--orthogonal', '-o', action='store_true', help="Use orthogonalized measurement matrix (default: False)")
-    parser.add_argument('--seed', '-s', type=int, default=0, help="Random seed for reproducibility")
     parser.add_argument('--processes', '-p', type=int, default=48, help="Number of CPU processes")
     parser.add_argument('--threshold', '-t', type=float, default=0.5, help="Threshold for metrics")
     parser.add_argument('--gpu', '-g', type=int, default=3, help="GPU index to use for training")
