@@ -146,18 +146,19 @@
 #     # --processes \
 #     # --vv \
 
-################################################################################
+# ###############################################################################
 # TSOC Training Script for Multiple Configurations                             #
-################################################################################
+# ###############################################################################
 
 # Configuration Section
 # n=128               # Number of samples per signal
 # # m=32                # Number of measurements
-# m_list=(16 32 48 64)
+# # m_list=(16 32 48 64)
+# m_list=(32 48 64)
 # seed=0              # Random seed for reproducibility
 # isnr=35             # Signal-to-noise ratio (SNR)
 # mode="standard"     # Encoder mode, change to 'rakeness' if needed
-# gpu=3               # GPU index
+# gpu=1               # GPU index
 # train_fraction=0.9  # Fraction of data used for training
 # factor=0.2          # Factor for ReduceLROnPlateau scheduler
 # min_lr=0.001        # Minimum learning rate
@@ -171,7 +172,7 @@
 # fs=256              # Sampling frequency
 # heart_rate="60 100" # Heart rate range
 # threshold=0.5       # Threshold for metrics
-# orthogonal=False    # Whether to use orthogonalized matrix
+# orthogonal=True    # Whether to use orthogonalized matrix
 # processes=48        # Number of CPU processes for parallelism
 
 # for m in "${m_list[@]}"
@@ -217,92 +218,118 @@
 # Anomaly Detection Evaluation Script for Multiple Configurations               #
 ################################################################################
 
-# Configuration Section
-n=128               # Number of samples per signal
-m=32              # Number of measurements
-seed=0              # Random seed for reproducibility
-isnr=35             # Signal-to-noise ratio (SNR)
-mode="standard"     # Encoder mode, change to 'rakeness' if needed
-N_train=2000000     # Number of training instances
-N_test=10000        # Number of test instances
-train_fraction=0.9  # Fraction of data used for training
-basis="sym6"        # Wavelet basis function
-fs=256              # Sampling frequency
-heart_rate="60 100" # Heart rate range
-orthogonal=True     # Whether to use orthogonalized measurement matrix
-processes=48        # Number of CPU processes
-gpu=3               # GPU index for evaluation
+# # Configuration Section
+# n=128               # Number of samples per signal
+# m=32              # Number of measurements
+# seed=0              # Random seed for reproducibility
+# isnr=35             # Signal-to-noise ratio (SNR)
+# mode="standard"     # Encoder mode, change to 'rakeness' if needed
+# N_train=2000000     # Number of training instances
+# N_test=10000        # Number of test instances
+# train_fraction=0.9  # Fraction of data used for training
+# basis="sym6"        # Wavelet basis function
+# fs=256              # Sampling frequency
+# heart_rate="60 100" # Heart rate range
+# orthogonal=True     # Whether to use orthogonalized measurement matrix
+# processes=48        # Number of CPU processes
+# gpu=3               # GPU index for evaluation
 
-detector_type="ZC"  # Detector type to evaluate (e.g., TSOC, SPE, OCSVM)
-delta=0.1           # Anomaly intensity parameter
+# detector_type="ZC"  # Detector type to evaluate (e.g., TSOC, SPE, OCSVM)
+# delta=0.1           # Anomaly intensity parameter
 
-# TSOC-specific configuration
-detector_mode="self-assessment"  # Mode of operation for TSOC
-factor=0.2                # Augmentation/scheduling factor
-min_lr=0.001              # Minimum learning rate for optimizers
-min_delta=1e-4            # Minimum change in monitored metric for early stopping
-patience=40               # Patience for early stopping
-epochs=500                # Number of epochs for training
-lr=0.1                    # Learning rate
-batch_size=50             # Batch size for training
-threshold=0.5             # Threshold for TSOC detector
+# # TSOC-specific configuration
+# detector_mode="self-assessment"  # Mode of operation for TSOC
+# factor=0.2                # Augmentation/scheduling factor
+# min_lr=0.001              # Minimum learning rate for optimizers
+# min_delta=1e-4            # Minimum change in monitored metric for early stopping
+# patience=40               # Patience for early stopping
+# epochs=500                # Number of epochs for training
+# lr=0.1                    # Learning rate
+# batch_size=50             # Batch size for training
+# threshold=0.5             # Threshold for TSOC detector
 
-# Standard detectors-related arguments
-# Parameter k for SPE, T2:
-k=5
-# Order parameter for AR detector:                       
-order=1
-# Parameters for OCSVM:                 
-kernel="rbf"              
-nu=0.5                    
-# Number of neighbors for LOF detector
-neighbors=10
-# Number of estimators for IF detector                      
-estimators=100                     
+# # Standard detectors-related arguments
+# # Parameter k for SPE, T2:
+# k=5
+# # Order parameter for AR detector:                       
+# order=1
+# # Parameters for OCSVM:                 
+# kernel="rbf"              
+# nu=0.5                    
+# # Number of neighbors for LOF detector
+# neighbors=10
+# # Number of estimators for IF detector                      
+# estimators=100                     
 
-echo "Running evaluation with ISNR=$isnr, Mode=$mode, Detector=$detector_type, Orthogonalization=$orthogonal, Measurements=$m, \
-Seed=$seed, TrainingInstances=$N_train, Basis=$basis, FS=$fs, HeartRate=($heart_rate), Processes=$processes, \
-Threshold=$threshold, GPU=$gpu, TrainFraction=$train_fraction, Factor=$factor, MinLR=$min_lr, MinDelta=$min_delta, \
-Patience=$patience, k=$k, Order=$order, Kernel=$kernel, Nu=$nu, Neighbors=$neighbors, Estimators=$estimators"
+# echo "Running evaluation with ISNR=$isnr, Mode=$mode, Detector=$detector_type, Orthogonalization=$orthogonal, Measurements=$m, \
+# Seed=$seed, TrainingInstances=$N_train, Basis=$basis, FS=$fs, HeartRate=($heart_rate), Processes=$processes, \
+# Threshold=$threshold, GPU=$gpu, TrainFraction=$train_fraction, Factor=$factor, MinLR=$min_lr, MinDelta=$min_delta, \
+# Patience=$patience, k=$k, Order=$order, Kernel=$kernel, Nu=$nu, Neighbors=$neighbors, Estimators=$estimators"
 
-if [ "$orthogonal" = "True" ]; then
-    orthogonal_flag="--orthogonal"
-else
-    orthogonal_flag=""
-fi
+# if [ "$orthogonal" = "True" ]; then
+#     orthogonal_flag="--orthogonal"
+# else
+#     orthogonal_flag=""
+# fi
 
-# Run the evaluation script with the selected configuration
-python detector_evaluation.py \
-    --n $n \
-    --m $m \
-    --seed $seed \
-    --mode $mode \
+# # Run the evaluation script with the selected configuration
+# python detector_evaluation.py \
+#     --n $n \
+#     --m $m \
+#     --seed $seed \
+#     --mode $mode \
+#     --isnr $isnr \
+#     --detector_type $detector_type \
+#     --delta $delta \
+#     --N_train $N_train \
+#     --N_test $N_test \
+#     --train_fraction $train_fraction \
+#     --basis $basis \
+#     --fs $fs \
+#     --heart_rate "$heart_rate" \
+#     $orthogonal_flag \
+#     --processes $processes \
+#     --gpu $gpu \
+#     --detector_mode $detector_mode \
+#     --factor $factor \
+#     --min_lr $min_lr \
+#     --min_delta $min_delta \
+#     --patience $patience \
+#     --epochs $epochs \
+#     --lr $lr \
+#     --batch_size $batch_size \
+#     --threshold $threshold \
+#     --k $k \
+#     --order $order \
+#     --kernel $kernel \
+#     --nu $nu \
+#     --neighbors $neighbors \
+#     --estimators $estimators
+
+################################################################################
+# ECG Anomaly Data Generation #
+################################################################################
+
+# Parameters
+N=10000         # Number of ECG examples
+n=128           # Length of each ECG signal
+fs=256          # Sampling frequency
+heart_rate=(60 100) # Heart rate range
+isnr=35         # Intrinsic signal-to-noise ratio
+seed_ok=0         # Random seed for normal data
+seed_ko=0         # Random seed for anomalous data
+delta=0.1       # Intensity of anomalies
+processes=48    # Number of parallel processes
+
+# Command for data generation and anomaly analysis
+python generate_anomalies.py \
+    --size $N \
+    --length $n \
+    --sample-freq $fs \
+    --heart-rate ${heart_rate[0]} ${heart_rate[1]} \
     --isnr $isnr \
-    --detector_type $detector_type \
+    --seed_ok $seed_ok \
+    --seed_ko $seed_ko \
     --delta $delta \
-    --N_train $N_train \
-    --N_test $N_test \
-    --train_fraction $train_fraction \
-    --basis $basis \
-    --fs $fs \
-    --heart_rate "$heart_rate" \
-    $orthogonal_flag \
     --processes $processes \
-    --gpu $gpu \
-    --detector_mode $detector_mode \
-    --factor $factor \
-    --min_lr $min_lr \
-    --min_delta $min_delta \
-    --patience $patience \
-    --epochs $epochs \
-    --lr $lr \
-    --batch_size $batch_size \
-    --threshold $threshold \
-    --k $k \
-    --order $order \
-    --kernel $kernel \
-    --nu $nu \
-    --neighbors $neighbors \
-    --estimators $estimators
-
 

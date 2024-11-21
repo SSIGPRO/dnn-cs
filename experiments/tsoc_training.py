@@ -16,6 +16,7 @@ root = os.path.dirname(os.path.dirname(os.path.realpath('__file__')))
 sys.path.insert(0, os.path.join(root, 'src'))
 
 from dataset.synthetic_ecg import generate_ecg
+from dataset import dataset_dir
 from cs.wavelet_basis import wavelet_basis
 from cs.supports import find_support_TSOC
 from cs.training_metrics import compute_metrics, update_metrics
@@ -54,7 +55,15 @@ def training(
 
     # ------------------ Compressed Sensing ------------------
     D = wavelet_basis(n, basis, level=2)
-    A = generate_sensing_matrix((m, n), mode='standard', orthogonal=orthogonal, loc=.25, seed=seed)
+    # Correlation
+    if mode == 'rakeness':
+        corr_name = '96af96a7ddfcb2f6059092c250e18f2a.pkl'
+        corr_path = os.path.join(dataset_dir, 'correlation', corr_name)
+        with open(corr_path, 'rb') as f:
+            C = pickle.load(f)
+    else:
+        C = None
+    A = generate_sensing_matrix((m, n), mode='standard', orthogonal=orthogonal, correlation=C, loc=.25, seed=seed)
     cs = CompressedSensing(A, D)
     Y = cs.encode(X)  # measurements
 
