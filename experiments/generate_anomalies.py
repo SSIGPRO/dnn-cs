@@ -11,7 +11,11 @@ from wombats.anomalies.invariant import *
 from wombats.anomalies.decreasing import *
 
 # import of local modules
-root = os.path.dirname(os.path.dirname(os.path.realpath('__file__')))
+# root = os.path.dirname(os.path.dirname(os.path.realpath('__file__')))
+# sys.path.insert(0, os.path.join(root, 'src'))
+
+# import of local modules
+root = os.path.dirname(os.path.realpath('__file__'))
 sys.path.insert(0, os.path.join(root, 'src'))
 
 from dataset.synthetic_ecg import generate_ecg
@@ -19,26 +23,12 @@ from dataset import dataset_dir
 
 def generate(N, n, fs, heart_rate, isnr, seed_ok, seed_ko, delta, processes):
 
-    # ------------------ Loard or generate normal ECG data ------------------
-    ok_dir = f'ecg_test_N={N}_n={n}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}'\
-                    f'_isnr={isnr}_seed={seed_ok}'
-    ok_path = os.path.join(dataset_dir, ok_dir, ok_dir+'.pkl')
-    if os.path.exists(ok_path):
-        with open(ok_path, 'rb') as f:
-            X = pickle.load(f)
-
-    else:
-        print("Generating OK ECG data...")
-        Xok = generate_ecg(
-            length=n, 
-            num_traces=N,
-            heart_rate=heart_rate, 
-            sampling_rate=fs, 
-            snr=isnr, 
-            random_state=seed_ok,
-            verbose=False,
-            processes=processes,
-        )
+    # ------------------ Loard normal ECG data ------------------
+    ok_name = f'ecg_N={N}_n={n}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}'\
+                    f'_isnr={isnr}_seed={seed_ok}.pkl'
+    ok_path = os.path.join(dataset_dir, ok_name)
+    with open(ok_path, 'rb') as f:
+        Xok = pickle.load(f)
 
     # standarize the data
     std, mean = Xok.std(), Xok.mean()
