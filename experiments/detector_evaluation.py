@@ -20,7 +20,6 @@ from wombats.detectors.feature_based import *
 from wombats.detectors.pca_based import *
 from wombats.detectors.gaussian_distribution_based import *
 from wombats.detectors.ml_based import *
-from wombats.detectors._base import AUC
 
 root = os.path.dirname(os.path.dirname(os.path.realpath('__file__')))
 sys.path.insert(0, os.path.join(root, 'src'))
