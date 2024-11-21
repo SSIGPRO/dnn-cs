@@ -172,7 +172,9 @@ basis="sym6"        # Wavelet basis function
 fs=256              # Sampling frequency
 heart_rate="60 100" # Heart rate range
 threshold=0.5       # Threshold for metrics
-orthogonal=True    # Whether to use orthogonalized matrix
+orthogonal=True     # Whether to use orthogonalized matrix
+source='best'       # Whether to use best or random matrix
+index=0             # Index or seed of the best or random matrix, respectivelly
 processes=48        # Number of CPU processes for parallelism
 
 for m in "${m_list[@]}"
@@ -233,6 +235,8 @@ for m in "${m_list[@]}"
 # fs=256              # Sampling frequency
 # heart_rate="60 100" # Heart rate range
 # orthogonal=True     # Whether to use orthogonalized measurement matrix
+# source='best'       # Whether to use best or random matrix
+# index=0             # Index or seed of the best or random matrix, respectivelly
 # processes=48        # Number of CPU processes
 # gpu=3               # GPU index for evaluation
 
@@ -290,6 +294,8 @@ for m in "${m_list[@]}"
 #     --fs $fs \
 #     --heart_rate "$heart_rate" \
 #     $orthogonal_flag \
+#     --source $source \
+#     --index $index \
 #     --processes $processes \
 #     --gpu $gpu \
 #     --detector_mode $detector_mode \

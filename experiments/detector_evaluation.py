@@ -31,7 +31,7 @@ from detectors import detectors_folder
 
 def test(
     n, m, epochs, lr, batch_size, N_train, basis, fs, heart_rate, isnr, mode, 
-    orthogonal, seed, processes, threshold, gpu, train_fraction, factor, min_lr, 
+    orthogonal, source, index, seed, processes, threshold, gpu, train_fraction, factor, min_lr, 
     min_delta, patience, detector_type, delta, N_test, detector_mode, 
     k, order, kernel, nu, neighbors, estimators
 ):
@@ -78,20 +78,30 @@ def test(
 
     # ------------------ Compressed Sensing ------------------
     D = wavelet_basis(n, basis, level=2)
-    if mode == 'rakeness':
-        corr_name = '96af96a7ddfcb2f6059092c250e18f2a.pkl'
-        corr_path = os.path.join(dataset_dir, 'correlation', corr_name)
-        with open(corr_path, 'rb') as f:
-            C = pickle.load(f)
-    else:
-        C = None
-    A = generate_sensing_matrix((m, n), mode='standard', orthogonal=orthogonal, correlation=C, loc=.25, seed=seed)
+    # Sensing matrix
+    if source == 'random':
+        # Generate a random sensing matrix
+        if mode == 'rakeness':
+            corr_name = '96af96a7ddfcb2f6059092c250e18f2a.pkl'
+            corr_path = os.path.join(dataset_dir, 'correlation', corr_name)
+            with open(corr_path, 'rb') as f:
+                C = pickle.load(f)
+        else:
+            C = None
+        A = generate_sensing_matrix((m, n), mode=mode, orthogonal=orthogonal, correlation=C, loc=.25, seed=idx)
+    elif source == 'best':
+        # Load the best sensing matrix
+        A_folder = f'ecg_N=10000_n={n}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}_isnr={isnr}_seed={seed}'
+        A_name = f'A_N=1000_n={n}_m={m}_mode={mode}_seed={seed}.pkl'
+        data_path = os.path.join(dataset_dir, A_folder, 'A_Filippo')
+        with open(os.path.join(data_path, A_name), 'rb') as f:
+            A_dict = pickle.load(f)
+        A = A_dict[index]
     cs = CompressedSensing(A, D)
     Y = cs.encode(X)  # measurements
 
     # ------------------ Anomalies generation ------------------
     # initialize anomalies
-    delta_nonstd = std**2 * delta
 
     anomalies_labels = [
         'GWN', 
@@ -265,7 +275,8 @@ def parse_args():
     parser.add_argument('-n', '--n', type=int, required=True, help="Number of samples per signal")
     parser.add_argument('-m', '--m', type=int, required=True, help="Number of measurements")
     parser.add_argument('-s', '--seed', type=int, required=True, help="Random seed for reproducibility")
-    parser.add_argument('-md', '--mode', type=str, choices=['standard', 'rakeness'], required=True, help="Measurement matrix mode: 'standard' or 'rakeness'")
+    parser.add_argument('-md', '--mode', type=str, choices=['standard', 'rakeness'], required=True, help="Sensing matrix mode: 'standard' or 'rakeness'")
+    parser.add_argument('-idx', '--index', type=int, required=True, help="Seed for random or index for (one of) the best sensing matrix")
     parser.add_argument('-i', '--isnr', type=int, required=True, help="Signal-to-noise ratio (SNR) in dB")
     parser.add_argument('-dt', '--detector_type', type=str, required=True, help="Type of detector to evaluate (e.g., TSOC, SPE, OCSVM, LOF)")
     parser.add_argument('-dlt', '--delta', type=float, required=True, help="Anomaly intensity parameter")
@@ -276,6 +287,7 @@ def parse_args():
     parser.add_argument('-f', '--fs', type=int, default=256, help="Sampling frequency")
     parser.add_argument('-hr', '--heart_rate', type=str, default='60,100', help="Heart rate range (comma-separated, e.g., 60,100)")
     parser.add_argument('-o', '--orthogonal', action='store_true', help="Use orthogonalized measurement matrix (default: False)")
+    parser.add_argument('--source', '-src', type=str, choices=['bast', 'random'], default='best', help="Sensing matrix type: genereated randomly or leading to best performance")
     parser.add_argument('-p', '--processes', type=int, default=48, help="Number of CPU processes")
     parser.add_argument('-g', '--gpu', type=int, default=3, help="GPU index to use for evaluation")
 
@@ -318,6 +330,8 @@ if __name__ == "__main__":
         isnr=args.isnr,
         mode=args.mode,
         orthogonal=args.orthogonal,
+        source=args.source,
+        index=args.index,
         seed=args.seed,
         processes=args.processes,
         threshold=args.threshold,
