@@ -29,6 +29,10 @@ def training(
     orthogonal, seed, processes, threshold, gpu, train_fraction, factor, 
     min_lr, min_delta, patience
 ):
+
+    # ------------------ Folders ------------------
+    model_folder = '/srv/newpenny/dnn-cs/tsoc/trained_models/TSOC'
+    data_folder = '/srv/newpenny/dnn-cs/JETCAS2020/data/'
    
     # ------------------ Seeds ------------------
     np.random.seed(seed)
@@ -44,8 +48,8 @@ def training(
     device = torch.device(f'cuda:{gpu}' if torch.cuda.is_available() else 'cpu')
 
     # ------------------ Signal ------------------
-    namefile = os.path.join('../../newpenny/dnn-cs/JETCAS2020/data/',f'n{n}_ISNR', f'trSet_n={n}_isnr={isnr}_no-sparse.h5')
-    with pd.HDFStore(namefile, mode='r') as store:
+    data_path = os.path.join(data_folder, f'n{n}_ISNR', f'trSet_n={n}_isnr={isnr}_no-sparse.h5')
+    with pd.HDFStore(data_path, mode='r') as store:
         X = store.select('X').values.squeeze()
 
     # ------------------ Compressed Sensing ------------------
@@ -55,8 +59,8 @@ def training(
     Y = cs.encode(X)  # measurements
 
     # ------------------ Labels (support) ------------------
-    namefile = os.path.join('../../newpenny/dnn-cs/JETCAS2020/data/',f'n{n}_ISNR', f'trSet_n={n}_m={m}_isnr={isnr}-label.h5')
-    with pd.HDFStore(namefile, mode='r') as store:
+    data_path = os.path.join(data_folder, f'n{n}_ISNR', f'trSet_n={n}_m={m}_isnr={isnr}-label.h5')
+    with pd.HDFStore(data_path, mode='r') as store:
         Z = store.select('S').values.squeeze()
 
     # ------------------ Loaders ------------------
@@ -78,14 +82,14 @@ def training(
     # ------------------ Neural Network initialization ------------------
     tsoc = TSOC(n, m)
     tsoc.to(device) # move the network to GPU
-    file_model = f'TSOC-N={N}_n={n}_m={m}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}'\
+    model_name = f'TSOC-N={N}_n={n}_m={m}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}'\
                 f'_isnr={isnr}_mode={mode}_ort={orthogonal}_epochs={epochs}_bs={batch_size}_opt=sgd_lr={lr}'\
                 f'_th={threshold}_tf={train_fraction}_minlr={min_lr}_p={patience}'\
                 f'_mind={min_delta}_seed={seed}.pth'
-    
+    model_path = os.path.join(model_folder, model_name)
     # ------------------ Trining loop ------------------
-    if os.path.exists(file_model):
-        print(f'Model\n{file_model}\nhas already been trained')
+    if os.path.exists(model_path):
+        print(f'Model\n{model_name}\nhas already been trained')
         sys.exit(0)
     else:
         optimizer = optim.SGD(tsoc.parameters(), lr=lr)
@@ -152,7 +156,7 @@ def training(
                         "  ".join([f'{key}: {np.round(value, 3)}' for key, value in val_metrics.items()]) + "\n") 
 
         # save trained model
-        torch.save(tsoc.state_dict(), file_model)
+        torch.save(tsoc.state_dict(), model_path)
 
 # ------------------ Perser definition ------------------
 def parse_args():
