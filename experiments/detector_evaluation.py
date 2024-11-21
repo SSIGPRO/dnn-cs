@@ -10,6 +10,7 @@ import pandas as pd
 import pickle
 import tqdm
 import argparse
+import logging
 
 from wombats.anomalies.increasing import *
 from wombats.anomalies.invariant import *
@@ -27,7 +28,10 @@ from dataset.synthetic_ecg import generate_ecg
 from cs.wavelet_basis import wavelet_basis
 from cs import CompressedSensing, generate_sensing_matrix
 from detectors.tsoc import TSOCDetector
-from detectors import detectors_folder
+from detectors import detectors_dir
+
+
+logging.basicConfig(level=logging.DEBUG)
 
 def test(
     n, m, epochs, lr, batch_size, N_train, basis, fs, heart_rate, isnr, mode, 
@@ -36,16 +40,9 @@ def test(
     k, order, kernel, nu, neighbors, estimators
 ):
     # ------------------ Show parameter values ------------------
-    print(
-        f"Running with the following parameters:\n"
-        f"  n={n}, m={m}, epochs={epochs}, lr={lr}, batch_size={batch_size}\n"
-        f"  N_train={N_train}, N_test={N_test}, train_fraction={train_fraction}\n"
-        f"  basis={basis}, fs={fs}, heart_rate={heart_rate}\n"
-        f"  isnr={isnr}, mode={mode}, orthogonal={orthogonal}\n"
-        f"  seed={seed}, processes={processes}, gpu={gpu}\n"
-        f"  threshold={threshold}, factor={factor}, min_lr={min_lr}, min_delta={min_delta}, patience={patience}\n"
-        f"  detector_type={detector_type}, detector_mode={detector_mode}, delta={delta}"
-    )
+    params = locals()
+    params_str = ", ".join(f"{key}={value}" for key, value in params.items())
+    logging.info(f"Running test with parameters: {params_str}")
 
     # ------------------ Folders ------------------
     data_folder = '/srv/newpenny/dnn-cs/JETCAS2020/data/'
@@ -88,7 +85,7 @@ def test(
                 C = pickle.load(f)
         else:
             C = None
-        A = generate_sensing_matrix((m, n), mode=mode, orthogonal=orthogonal, correlation=C, loc=.25, seed=idx)
+        A = generate_sensing_matrix((m, n), mode=mode, orthogonal=orthogonal, correlation=C, loc=.25, seed=index)
     elif source == 'best':
         # Load the best sensing matrix
         A_folder = f'ecg_N=10000_n={n}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}_isnr={isnr}_seed={seed}'
@@ -224,7 +221,7 @@ def test(
         # fit the detector
         model_name = f'{detector_label}_N={N_train}_n={n}_m={m}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}'\
         f'_isnr={isnr}_seed={seed}.pkl'
-        model_path = os.path.join(detectors_folder, model_name)
+        model_path = os.path.join(detectors_dir, model_name)
         # load if already trained
         if os.path.exists(model_path):
             
@@ -287,7 +284,7 @@ def parse_args():
     parser.add_argument('-f', '--fs', type=int, default=256, help="Sampling frequency")
     parser.add_argument('-hr', '--heart_rate', type=str, default='60,100', help="Heart rate range (comma-separated, e.g., 60,100)")
     parser.add_argument('-o', '--orthogonal', action='store_true', help="Use orthogonalized measurement matrix (default: False)")
-    parser.add_argument('--source', '-src', type=str, choices=['bast', 'random'], default='best', help="Sensing matrix type: genereated randomly or leading to best performance")
+    parser.add_argument('--source', '-src', type=str, choices=['best', 'random'], default='best', help="Sensing matrix type: genereated randomly or leading to best performance")
     parser.add_argument('-p', '--processes', type=int, default=48, help="Number of CPU processes")
     parser.add_argument('-g', '--gpu', type=int, default=3, help="GPU index to use for evaluation")
 

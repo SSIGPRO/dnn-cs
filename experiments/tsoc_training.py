@@ -10,6 +10,7 @@ import pandas as pd
 import pickle
 import tqdm
 import argparse
+import logging
 
 root = os.path.dirname(os.path.dirname(os.path.realpath('__file__')))
 sys.path.insert(0, os.path.join(root, 'src'))
@@ -23,12 +24,18 @@ from cs.loss import multiclass_loss_alpha
 from models.tsoc import TSOC
 from cs import CompressedSensing, generate_sensing_matrix
 
+logging.basicConfig(level=logging.DEBUG)
 
 def training(
     n, m, epochs, lr, batch_size, N, basis, fs, heart_rate, isnr, mode, 
     orthogonal, source, index, seed, processes, threshold, gpu, train_fraction, factor, 
     min_lr, min_delta, patience
 ):
+
+    # ------------------ Show parameter values ------------------
+    params = locals()
+    params_str = ", ".join(f"{key}={value}" for key, value in params.items())
+    logging.info(f"Running test with parameters: {params_str}")
 
     # ------------------ Folders ------------------
     model_folder = '/srv/newpenny/dnn-cs/tsoc/trained_models/TSOC'
