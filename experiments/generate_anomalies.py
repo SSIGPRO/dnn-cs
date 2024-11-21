@@ -19,18 +19,26 @@ from dataset import dataset_dir
 
 def generate(N, n, fs, heart_rate, isnr, seed_ok, seed_ko, delta, processes):
 
-    # ------------------ Generate normal ECG data ------------------
-    print("Generation OK ECG data...")
-    Xok = generate_ecg(
-        length=n, 
-        num_traces=N,
-        heart_rate=heart_rate, 
-        sampling_rate=fs, 
-        snr=isnr, 
-        random_state=seed_ok,
-        verbose=False,
-        processes=processes,
-    )
+    # ------------------ Loard or generate normal ECG data ------------------
+    ok_dir = f'ecg_test_N={N}_n={n}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}'\
+                    f'_isnr={isnr}_seed={seed_ok}'
+    ok_path = os.path.join(dataset_dir, ok_dir, ok_dir+'.pkl')
+    if os.path.exists(ok_path):
+        with open(ok_path, 'rb') as f:
+            X = pickle.load(f)
+
+    else:
+        print("Generating OK ECG data...")
+        Xok = generate_ecg(
+            length=n, 
+            num_traces=N,
+            heart_rate=heart_rate, 
+            sampling_rate=fs, 
+            snr=isnr, 
+            random_state=seed_ok,
+            verbose=False,
+            processes=processes,
+        )
 
     # standarize the data
     std, mean = Xok.std(), Xok.mean()
@@ -94,13 +102,15 @@ def generate(N, n, fs, heart_rate, isnr, seed_ok, seed_ko, delta, processes):
         Xko = Xko*std + mean
 
         # save data
-        data_name = f'ecg_anomaly_{anomaly_label}_N={N}_n={n}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}'\
+        ko_name = f'ecg_anomaly_{anomaly_label}_N={N}_n={n}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}'\
                     f'_isnr={isnr}_delta={delta}_seedok={seed_ok}_seedko={seed_ko}.pkl'
         ok_folder = f'ecg_N={N}_n={n}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}'\
-                    f'_isnr={isnr}_delta={delta}_seed={seed_ok}'
-        data_path = os.path.join(dataset_dir, ok_folder, 'anomalies', data_name)
+                    f'_isnr={isnr}_seed={seed_ok}'
 
-        with open(data_path, 'wb') as f:
+        ko_path = os.path.join(dataset_dir, ok_folder, 'anomalies', f'delta={delta}', f'seed={seed_ko}', ko_name)
+        # ensure the directories exists
+        os.makedirs(os.path.dirname(ko_path), exist_ok=True)
+        with open(ko_path, 'wb') as f:
             pickle.dump(Xko, f)
 
 
