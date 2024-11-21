@@ -96,7 +96,9 @@ def generate(N, n, fs, heart_rate, isnr, seed_ok, seed_ko, delta, processes):
         # save data
         data_name = f'ecg_anomaly_{anomaly_label}_N={N}_n={n}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}'\
                     f'_isnr={isnr}_delta={delta}_seedok={seed_ok}_seedko={seed_ko}.pkl'
-        data_path = os.path.join(dataset_dir, data_name)
+        ok_folder = f'ecg_N={N}_n={n}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}'\
+                    f'_isnr={isnr}_delta={delta}_seed={seed_ok}'
+        data_path = os.path.join(dataset_dir, ok_folder, 'anomalies', data_name)
 
         with open(data_path, 'wb') as f:
             pickle.dump(Xko, f)
