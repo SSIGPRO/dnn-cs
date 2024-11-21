@@ -163,7 +163,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Training Script for TSOC Model with Compressed Sensing")
 
     # Short and long argument versions
-    parser.add_argument('--n', '-n' type=int, required=True, help="Number of samples per signal")
+    parser.add_argument('--n', '-n', type=int, required=True, help="Number of samples per signal")
     parser.add_argument('--m', '-m', type=int, required=True, help="Number of measurements")
     parser.add_argument('--isnr', '-i', type=int, required=True, help="Signal-to-noise ratio (SNR)")
     parser.add_argument('--mode', '-md', type=str, choices=['standard', 'rakeness'], required=True, help="Measurement matrix mode: 'standard' or 'rakeness'")
