@@ -7,7 +7,6 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 import numpy as np
 import pandas as pd
-from scipy import linalg
 import pickle
 import tqdm
 import argparse
@@ -27,7 +26,7 @@ from cs import CompressedSensing, generate_sensing_matrix
 
 def training(
     n, m, epochs, lr, batch_size, N, basis, fs, heart_rate, isnr, mode, 
-    orthogonal, seed, processes, threshold, gpu, train_fraction, factor, 
+    orthogonal, source, index, seed, processes, threshold, gpu, train_fraction, factor, 
     min_lr, min_delta, patience
 ):
 
@@ -55,15 +54,27 @@ def training(
 
     # ------------------ Compressed Sensing ------------------
     D = wavelet_basis(n, basis, level=2)
-    # Correlation
-    if mode == 'rakeness':
-        corr_name = '96af96a7ddfcb2f6059092c250e18f2a.pkl'
-        corr_path = os.path.join(dataset_dir, 'correlation', corr_name)
-        with open(corr_path, 'rb') as f:
-            C = pickle.load(f)
-    else:
-        C = None
-    A = generate_sensing_matrix((m, n), mode='standard', orthogonal=orthogonal, correlation=C, loc=.25, seed=seed)
+
+    # Sensing matrix
+    if source == 'random':
+        # Generate a random sensing matrix
+        if mode == 'rakeness':
+            corr_name = '96af96a7ddfcb2f6059092c250e18f2a.pkl'
+            corr_path = os.path.join(dataset_dir, 'correlation', corr_name)
+            with open(corr_path, 'rb') as f:
+                C = pickle.load(f)
+        else:
+            C = None
+        A = generate_sensing_matrix((m, n), mode=mode, orthogonal=orthogonal, correlation=C, loc=.25, seed=idx)
+    elif source == 'best':
+        # Load the best sensing matrix
+        A_folder = f'ecg_N=10000_n={n}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}_isnr={isnr}_seed={seed}'
+        A_name = f'A_N=1000_n={n}_m={m}_mode={mode}_seed={seed}.pkl'
+        data_path = os.path.join(dataset_dir, A_folder, 'A_Filippo')
+        with open(os.path.join(data_path, A_name), 'rb') as f:
+            A_dict = pickle.load(f)
+        A = A_dict[index]
+
     cs = CompressedSensing(A, D)
     Y = cs.encode(X)  # measurements
 
@@ -72,7 +83,7 @@ def training(
     with pd.HDFStore(data_path, mode='r') as store:
         Z = store.select('S').values.squeeze()
 
-    # ------------------ Loaders ------------------
+    # ------------------ Data loaders ------------------
     dataset = TensorDataset(torch.from_numpy(Y).float(), torch.from_numpy(Z).float())  # Create a dataset from the tensors
     # Split sizes for training and validation
     train_size = int(train_fraction * len(dataset))  # 90% for training
@@ -84,10 +95,10 @@ def training(
     train_dataset, val_dataset = random_split(dataset, [train_size, val_size], generator=generator)
 
     # Create data loaders for training and validation
-    # train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=processes)
-    # val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=processes)
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=processes)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=processes)
+    # train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    # val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
     # ------------------ Neural Network initialization ------------------
     tsoc = TSOC(n, m)
     tsoc.to(device) # move the network to GPU
@@ -177,6 +188,7 @@ def parse_args():
     parser.add_argument('--isnr', '-i', type=int, required=True, help="Signal-to-noise ratio (SNR)")
     parser.add_argument('--mode', '-md', type=str, choices=['standard', 'rakeness'], required=True, help="Measurement matrix mode: 'standard' or 'rakeness'")
     parser.add_argument('--seed', '-s', type=int, required=True, help="Random seed for reproducibility")
+    parser.add_argument('--index', '-idx', type=int, required=True, help="Seed for random or index for (one of) the best Measurement matrix")
     parser.add_argument('--epochs', '-e', type=int, default=500, help="Number of training epochs")
     parser.add_argument('--lr', '-l', type=float, default=0.1, help="Learning rate")
     parser.add_argument('--batch_size', '-b', type=int, default=50, help="Batch size for training")
@@ -185,6 +197,7 @@ def parse_args():
     parser.add_argument('--fs', '-f', type=int, default=256, help="Sampling frequency")
     parser.add_argument('--heart_rate', '-hr', type=int, nargs=2, default=(60, 100), help="Heart rate range")
     parser.add_argument('--orthogonal', '-o', action='store_true', help="Use orthogonalized measurement matrix (default: False)")
+    parser.add_argument('--source', '-src', type=str, choices=['bast', 'random'], default='best', help="Measurement matrix type: genereated randomly or leading to best performance")
     parser.add_argument('--processes', '-p', type=int, default=48, help="Number of CPU processes")
     parser.add_argument('--threshold', '-t', type=float, default=0.5, help="Threshold for metrics")
     parser.add_argument('--gpu', '-g', type=int, default=3, help="GPU index to use for training")
@@ -215,6 +228,8 @@ if __name__ == '__main__':
         isnr=args.isnr,
         mode=args.mode,  
         orthogonal=args.orthogonal,
+        source=args.source,
+        index=args.index,
         seed=args.seed,
         processes=args.processes,
         threshold=args.threshold,

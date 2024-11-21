@@ -150,68 +150,70 @@
 # TSOC Training Script for Multiple Configurations                             #
 # ###############################################################################
 
-# Configuration Section
-# n=128               # Number of samples per signal
-# # m=32                # Number of measurements
-# # m_list=(16 32 48 64)
-# m_list=(32 48 64)
-# seed=0              # Random seed for reproducibility
-# isnr=35             # Signal-to-noise ratio (SNR)
-# mode="standard"     # Encoder mode, change to 'rakeness' if needed
-# gpu=1               # GPU index
-# train_fraction=0.9  # Fraction of data used for training
-# factor=0.2          # Factor for ReduceLROnPlateau scheduler
-# min_lr=0.001        # Minimum learning rate
-# min_delta=1e-4      # Minimum delta for early stopping and ReduceLROnPlateau
-# patience=40         # Patience for early stopping
-# epochs=500          # Number of training epochs
-# lr=0.1              # Learning rate
-# batch_size=50       # Batch size for training
-# N=2000000           # Number of training instances
-# basis="sym6"        # Wavelet basis function
-# fs=256              # Sampling frequency
-# heart_rate="60 100" # Heart rate range
-# threshold=0.5       # Threshold for metrics
-# orthogonal=True    # Whether to use orthogonalized matrix
-# processes=48        # Number of CPU processes for parallelism
+Configuration Section
+n=128               # Number of samples per signal
+# m=32                # Number of measurements
+# m_list=(16 32 48 64)
+m_list=(32 48 64)
+seed=0              # Random seed for reproducibility
+isnr=35             # Signal-to-noise ratio (SNR)
+mode="standard"     # Encoder mode, change to 'rakeness' if needed
+gpu=1               # GPU index
+train_fraction=0.9  # Fraction of data used for training
+factor=0.2          # Factor for ReduceLROnPlateau scheduler
+min_lr=0.001        # Minimum learning rate
+min_delta=1e-4      # Minimum delta for early stopping and ReduceLROnPlateau
+patience=40         # Patience for early stopping
+epochs=500          # Number of training epochs
+lr=0.1              # Learning rate
+batch_size=50       # Batch size for training
+N=2000000           # Number of training instances
+basis="sym6"        # Wavelet basis function
+fs=256              # Sampling frequency
+heart_rate="60 100" # Heart rate range
+threshold=0.5       # Threshold for metrics
+orthogonal=True    # Whether to use orthogonalized matrix
+processes=48        # Number of CPU processes for parallelism
 
-# for m in "${m_list[@]}"
-#     do
-#         echo "Running TSOC training with ISNR=$isnr, Mode=$mode, Orthogonalization=$orthogonal, Measurements=$m, \
-#         Seed=$seed, TrainingInstances=$N, Basis=$basis, FS=$fs, HeartRate=($heart_rate), Processes=$processes, \
-#         Threshold=$threshold, GPU=$gpu, TrainFraction=$train_fraction, \
-#         Factor=$factor, MinLR=$min_lr, MinDelta=$min_delta, Patience=$patience"
+for m in "${m_list[@]}"
+    do
+        echo "Running TSOC training with ISNR=$isnr, Mode=$mode, Orthogonalization=$orthogonal, Measurements=$m, \
+        Seed=$seed, TrainingInstances=$N, Basis=$basis, FS=$fs, HeartRate=($heart_rate), Processes=$processes, \
+        Threshold=$threshold, GPU=$gpu, TrainFraction=$train_fraction, \
+        Factor=$factor, MinLR=$min_lr, MinDelta=$min_delta, Patience=$patience"
 
-#         if [ "$orthogonal" = "True" ]; then
-#             orthogonal_flag="--orthogonal"
-#         else
-#             orthogonal_flag=""
-#         fi
+        if [ "$orthogonal" = "True" ]; then
+            orthogonal_flag="--orthogonal"
+        else
+            orthogonal_flag=""
+        fi
 
-#         # Run the training script with the selected configuration
-#         python tsoc_training.py \
-#             --n $n \
-#             --m $m \
-#             --epochs $epochs \
-#             --lr $lr \
-#             --batch_size $batch_size \
-#             --N $N \
-#             --basis $basis \
-#             --fs $fs \
-#             --heart_rate $heart_rate \
-#             --isnr $isnr \
-#             --mode $mode \
-#             $orthogonal_flag \
-#             --seed $seed \
-#             --processes $processes \
-#             --threshold $threshold \
-#             --gpu $gpu \
-#             --train_fraction $train_fraction \
-#             --factor $factor \
-#             --min_lr $min_lr \
-#             --min_delta $min_delta \
-#             --patience $patience
-#     done
+        # Run the training script with the selected configuration
+        python tsoc_training.py \
+            --n $n \
+            --m $m \
+            --epochs $epochs \
+            --lr $lr \
+            --batch_size $batch_size \
+            --N $N \
+            --basis $basis \
+            --fs $fs \
+            --heart_rate $heart_rate \
+            --isnr $isnr \
+            --mode $mode \
+            $orthogonal_flag \
+            --source $source \
+            --index $index \
+            --seed $seed \
+            --processes $processes \
+            --threshold $threshold \
+            --gpu $gpu \
+            --train_fraction $train_fraction \
+            --factor $factor \
+            --min_lr $min_lr \
+            --min_delta $min_delta \
+            --patience $patience
+    done
 
 
 ################################################################################
@@ -310,26 +312,26 @@
 # ECG Anomaly Data Generation #
 ################################################################################
 
-# Parameters
-N=10000         # Number of ECG examples
-n=128           # Length of each ECG signal
-fs=256          # Sampling frequency
-heart_rate=(60 100) # Heart rate range
-isnr=35         # Intrinsic signal-to-noise ratio
-seed_ok=0         # Random seed for normal data
-seed_ko=0         # Random seed for anomalous data
-delta=0.1       # Intensity of anomalies
-processes=48    # Number of parallel processes
+# # Parameters
+# N=10000         # Number of ECG examples
+# n=128           # Length of each ECG signal
+# fs=256          # Sampling frequency
+# heart_rate=(60 100) # Heart rate range
+# isnr=35         # Intrinsic signal-to-noise ratio
+# seed_ok=0         # Random seed for normal data
+# seed_ko=1         # Random seed for anomalous data
+# delta=0.1       # Intensity of anomalies
+# processes=48    # Number of parallel processes
 
-# Command for data generation and anomaly analysis
-python generate_anomalies.py \
-    --size $N \
-    --length $n \
-    --sample-freq $fs \
-    --heart-rate ${heart_rate[0]} ${heart_rate[1]} \
-    --isnr $isnr \
-    --seed_ok $seed_ok \
-    --seed_ko $seed_ko \
-    --delta $delta \
-    --processes $processes \
+# # Command for data generation and anomaly analysis
+# python generate_anomalies.py \
+#     --size $N \
+#     --length $n \
+#     --sample-freq $fs \
+#     --heart-rate ${heart_rate[0]} ${heart_rate[1]} \
+#     --isnr $isnr \
+#     --seed_ok $seed_ok \
+#     --seed_ko $seed_ko \
+#     --delta $delta \
+#     --processes $processes \
 
