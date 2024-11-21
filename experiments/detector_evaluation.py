@@ -30,6 +30,7 @@ from cs.wavelet_basis import wavelet_basis
 from models.tsoc import TSOC
 from cs import CompressedSensing, generate_sensing_matrix
 from detectors.tsoc import TSOCDetector
+from detectors import detectors_folder
 
 def test(
     n, m, epochs, lr, batch_size, N_train, basis, fs, heart_rate, isnr, mode, 
@@ -50,7 +51,6 @@ def test(
     )
 
     # ------------------ Folders ------------------
-    detectors_folder = '/srv/newpenny/dnn-cs/tsoc/detectors/'
     data_folder = '/srv/newpenny/dnn-cs/JETCAS2020/data/'
     results_folder = '/srv/newpenny/dnn-cs/tsoc/results/TSOC/detection'
 
