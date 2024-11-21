@@ -4,10 +4,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-from torch.utils.data import random_split, DataLoader, TensorDataset
+from torch.utils.data import random_split
 import numpy as np
 import pandas as pd
-from scipy import linalg
 import pickle
 import tqdm
 import argparse
@@ -26,7 +25,6 @@ sys.path.insert(0, os.path.join(root, 'src'))
 
 from dataset.synthetic_ecg import generate_ecg
 from cs.wavelet_basis import wavelet_basis
-from models.tsoc import TSOC
 from cs import CompressedSensing, generate_sensing_matrix
 from detectors.tsoc import TSOCDetector
 from detectors import detectors_folder
