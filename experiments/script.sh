@@ -146,6 +146,29 @@
 #     # --processes \
 #     # --vv \
 
+################################################################################
+# ECG Training Data Generation #
+################################################################################
+
+# Parameters
+N_train=2000000 # Number of ECG training examples
+n=128           # Length of each ECG signal
+fs=256          # Sampling frequency
+heart_rate=(60 100) # Heart rate range
+isnr=35         # Intrinsic signal-to-noise ratio
+seed=11         # Random seed for normal data
+processes=64    # Number of parallel processes
+
+python ./experiments/generate_ecg.py \
+    --size $N_train \
+    --length $n \
+    --sample-freq $fs \
+    --heart-rate ${heart_rate[0]} ${heart_rate[1]} \
+    --isnr $isnr \
+    --seed $seed \
+    --processes $processes \
+    -vv
+
 # ###############################################################################
 # TSOC Training Script for Multiple Configurations                             #
 # ###############################################################################
@@ -179,11 +202,6 @@
 
 # for m in "${m_list[@]}"
 #     do
-#         echo "Running TSOC training with ISNR=$isnr, Mode=$mode, Orthogonalization=$orthogonal, Measurements=$m, \
-#         Seed=$seed, TrainingInstances=$N, Basis=$basis, FS=$fs, HeartRate=($heart_rate), Processes=$processes, \
-#         Threshold=$threshold, GPU=$gpu, TrainFraction=$train_fraction, \
-#         Factor=$factor, MinLR=$min_lr, MinDelta=$min_delta, Patience=$patience"
-
 #         if [ "$orthogonal" = "True" ]; then
 #             orthogonal_flag="--orthogonal"
 #         else
@@ -235,7 +253,7 @@
 # fs=256              # Sampling frequency
 # heart_rate="60 100" # Heart rate range
 # orthogonal=True     # Whether to use orthogonalized measurement matrix
-# source='best'       # Whether to use best or random matrix
+# source='random'       # Whether to use best or random matrix
 # index=0             # Index or seed of the best or random matrix, respectivelly
 # processes=48        # Number of CPU processes
 # gpu=3               # GPU index for evaluation
@@ -266,11 +284,6 @@
 # neighbors=10
 # # Number of estimators for IF detector                      
 # estimators=100                     
-
-# echo "Running evaluation with ISNR=$isnr, Mode=$mode, Detector=$detector_type, Orthogonalization=$orthogonal, Measurements=$m, \
-# Seed=$seed, TrainingInstances=$N_train, Basis=$basis, FS=$fs, HeartRate=($heart_rate), Processes=$processes, \
-# Threshold=$threshold, GPU=$gpu, TrainFraction=$train_fraction, Factor=$factor, MinLR=$min_lr, MinDelta=$min_delta, \
-# Patience=$patience, k=$k, Order=$order, Kernel=$kernel, Nu=$nu, Neighbors=$neighbors, Estimators=$estimators"
 
 # if [ "$orthogonal" = "True" ]; then
 #     orthogonal_flag="--orthogonal"
@@ -318,35 +331,35 @@
 # ECG Anomaly Data Generation #
 ################################################################################
 
-# Parameters
-N_test=10000         # Number of ECG examples
-n=128           # Length of each ECG signal
-fs=256          # Sampling frequency
-heart_rate=(60 100) # Heart rate range
-isnr=35         # Intrinsic signal-to-noise ratio
-seed_ok=66         # Random seed for normal data
-seed_ko=0         # Random seed for anomalous data
-delta=0.1       # Intensity of anomalies
-processes=48    # Number of parallel processes
+# # Parameters
+# N_test=10000         # Number of ECG examples
+# n=128           # Length of each ECG signal
+# fs=256          # Sampling frequency
+# heart_rate=(60 100) # Heart rate range
+# isnr=35         # Intrinsic signal-to-noise ratio
+# seed_ok=66         # Random seed for normal data
+# seed_ko=0         # Random seed for anomalous data
+# delta=0.1       # Intensity of anomalies
+# processes=48    # Number of parallel processes
 
-python ./experiments/generate_ecg.py \
-    --size $N_test \
-    --length $n \
-    --sample-freq $fs \
-    --heart-rate ${heart_rate[0]} ${heart_rate[1]} \
-    --isnr $isnr \
-    --seed $seed_ok \
-    --processes $processes \
-    -vv
+# python ./experiments/generate_ecg.py \
+#     --size $N_test \
+#     --length $n \
+#     --sample-freq $fs \
+#     --heart-rate ${heart_rate[0]} ${heart_rate[1]} \
+#     --isnr $isnr \
+#     --seed $seed_ok \
+#     --processes $processes \
+#     -vv
 
-python ./experiments/generate_anomalies.py \
-    --size $N_test \
-    --length $n \
-    --sample-freq $fs \
-    --heart-rate ${heart_rate[0]} ${heart_rate[1]} \
-    --isnr $isnr \
-    --seed_ok $seed_ok \
-    --seed_ko $seed_ko \
-    --delta $delta \
-    --processes $processes \
+# python ./experiments/generate_anomalies.py \
+#     --size $N_test \
+#     --length $n \
+#     --sample-freq $fs \
+#     --heart-rate ${heart_rate[0]} ${heart_rate[1]} \
+#     --isnr $isnr \
+#     --seed_ok $seed_ok \
+#     --seed_ko $seed_ko \
+#     --delta $delta \
+#     --processes $processes \
 
