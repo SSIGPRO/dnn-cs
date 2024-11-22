@@ -42,7 +42,7 @@ n = 128                 # length of an ECG trace
 fs = 256                # sampling rate
 heart_rate = (60, 100)  # min and max heart rate
 # isnr = 25               # signal-to-noise ratio in dB (35)
-ecg_seed = 0            # random seed for ECG generation
+ecg_seed = 11            # random seed for ECG generation
 basis = 'sym6'          # sparsity basis
 
 
@@ -85,7 +85,7 @@ def cmdline_args():
         help="rakeness localization factor (rakeness mode only, default: %(default)s)",
     )
     parser.add_argument(
-        "-s", "--seed", type=int,
+        "-sd", "--seed", type=int,
         help="random seed"
     )
     parser.add_argument(
