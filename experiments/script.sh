@@ -150,14 +150,29 @@
 # ECG Training Data Generation #
 ################################################################################
 
-# Parameters
+# Parameters of the training data
 N_train=2000000 # Number of ECG training examples
 n=128           # Length of each ECG signal
 fs=256          # Sampling frequency
 heart_rate=(60 100) # Heart rate range
 isnr=35         # Intrinsic signal-to-noise ratio
-seed=11         # Random seed for normal data
+ecg_seed=11         # Random seed for data generation
+seed=0              # Random seed for support estimation
 processes=64    # Number of parallel processes
+
+# Parameters of the support of the training data
+m=32
+corr=96af96a7ddfcb2f6059092c250e18f2a
+loc=0.25
+encoder="standard"
+algorithm="TSOC2"
+orthogonal=True
+
+if [ "$orthogonal" = "True" ]; then
+    orthogonal_flag="--orthogonal"
+else
+    orthogonal_flag=""
+fi
 
 python ./experiments/generate_ecg.py \
     --size $N_train \
@@ -165,20 +180,34 @@ python ./experiments/generate_ecg.py \
     --sample-freq $fs \
     --heart-rate ${heart_rate[0]} ${heart_rate[1]} \
     --isnr $isnr \
-    --seed $seed \
+    --seed $ecg_seed \
     --processes $processes \
     -vv
 
+python ./experiments/compute_supports.py \
+    --size $N_train \
+    --isnr $isnr \
+    --algorithm $algorithm \
+    --encoder $encoder \
+    --measurements $m \
+    --correlation $corr \
+    --localization $loc \
+    --ecg_seed $ecg_seed\
+    --seed $seed \
+    $orthogonal_flag \
+    --processes $processes\
+    -vv
+
 # ###############################################################################
-# TSOC Training Script for Multiple Configurations                             #
+# TSOC Training for Multiple Configurations                             #
 # ###############################################################################
 
-# Configuration Section
+# # Configuration Section
 # n=128               # Number of samples per signal
 # # m=32                # Number of measurements
 # # m_list=(16 32 48 64)
 # m_list=(32 48 64)
-# seed=0              # Random seed for reproducibility
+# seed_training=0     # Training-related random seed for reproducibility
 # isnr=35             # Signal-to-noise ratio (SNR)
 # mode="standard"     # Encoder mode, change to 'rakeness' if needed
 # gpu=1               # GPU index
@@ -224,7 +253,7 @@ python ./experiments/generate_ecg.py \
 #             $orthogonal_flag \
 #             --source $source \
 #             --index $index \
-#             --seed $seed \
+#             --seed_training $seed_training \
 #             --processes $processes \
 #             --threshold $threshold \
 #             --gpu $gpu \
@@ -331,14 +360,14 @@ python ./experiments/generate_ecg.py \
 # ECG Anomaly Data Generation #
 ################################################################################
 
-# # Parameters
+# Parameters
 # N_test=10000         # Number of ECG examples
 # n=128           # Length of each ECG signal
 # fs=256          # Sampling frequency
 # heart_rate=(60 100) # Heart rate range
 # isnr=35         # Intrinsic signal-to-noise ratio
 # seed_ok=66         # Random seed for normal data
-# seed_ko=0         # Random seed for anomalous data
+# seed_ko=2         # Random seed for anomalous data
 # delta=0.1       # Intensity of anomalies
 # processes=48    # Number of parallel processes
 
