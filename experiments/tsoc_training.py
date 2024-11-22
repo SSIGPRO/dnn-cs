@@ -15,10 +15,8 @@ import logging
 root = os.path.dirname(os.path.dirname(os.path.realpath('__file__')))
 sys.path.insert(0, os.path.join(root, 'src'))
 
-from dataset.synthetic_ecg import generate_ecg
 from dataset import dataset_dir
 from cs.wavelet_basis import wavelet_basis
-from cs.supports import find_support_TSOC
 from cs.training_metrics import compute_metrics, update_metrics
 from cs.loss import multiclass_loss_alpha
 from models.tsoc import TSOC
@@ -28,8 +26,8 @@ logging.basicConfig(level=logging.DEBUG)
 
 def training(
     n, m, epochs, lr, batch_size, N, basis, fs, heart_rate, isnr, mode, 
-    orthogonal, source, index, seed, processes, threshold, gpu, train_fraction, factor, 
-    min_lr, min_delta, patience
+    orthogonal, source, index, seed_data, seed_training, processes, threshold, gpu, train_fraction, factor, 
+    min_lr, min_delta, patience, seed_data_matrix, seed_matrix, M
 ):
 
     # ------------------ Show parameter values ------------------
@@ -39,25 +37,38 @@ def training(
 
     # ------------------ Folders ------------------
     model_folder = '/srv/newpenny/dnn-cs/tsoc/trained_models/TSOC'
-    data_folder = '/srv/newpenny/dnn-cs/JETCAS2020/data/'
-   
+
+    # ------------------ Constants ------------------
+    corr_name = '96af96a7ddfcb2f6059092c250e18f2a.pkl'
+    support_method = 'TSOC2'
+    seed_data_matrix = 0
+    seed_matrix = 0
+    M = 10000
+    
     # ------------------ Seeds ------------------
-    np.random.seed(seed)
+    # np.random.seed(seed)
 
     # Set the seed for PyTorch (CPU)
-    torch.manual_seed(seed)
+    torch.manual_seed(seed_training)
 
     # Set the seed for PyTorch (GPU)
-    torch.cuda.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)  # For multi-GPU setups
+    torch.cuda.manual_seed(seed_training)
+    torch.cuda.manual_seed_all(seed_training)  # For multi-GPU setups
 
     # ------------------ GPU ------------------
     device = torch.device(f'cuda:{gpu}' if torch.cuda.is_available() else 'cpu')
 
     # ------------------ Signal ------------------
-    data_path = os.path.join(data_folder, f'n{n}_ISNR', f'trSet_n={n}_isnr={isnr}_no-sparse.h5')
-    with pd.HDFStore(data_path, mode='r') as store:
-        X = store.select('X').values.squeeze()
+    data_name = f'ecg_N={N}_n={n}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}'\
+                f'_isnr={isnr}_seed={seed_data}'
+    data_path = os.path.join(dataset_dir, data_name+'.pkl')
+    with open(data_path, 'rb') as f:
+        X = pickle.load(f)
+
+    # data_folder = '/srv/newpenny/dnn-cs/JETCAS2020/data/'
+    # data_path = os.path.join(data_folder, f'n{n}_ISNR', f'trSet_n={n}_isnr={isnr}_no-sparse.h5')
+    # with pd.HDFStore(data_path, mode='r') as store:
+    #     X = store.select('X').values.squeeze()
 
     # ------------------ Compressed Sensing ------------------
     D = wavelet_basis(n, basis, level=2)
@@ -66,17 +77,22 @@ def training(
     if source == 'random':
         # Generate a random sensing matrix
         if mode == 'rakeness':
-            corr_name = '96af96a7ddfcb2f6059092c250e18f2a.pkl'
             corr_path = os.path.join(dataset_dir, 'correlation', corr_name)
             with open(corr_path, 'rb') as f:
                 C = pickle.load(f)
+            supports_name = f'supports_method={support_method}_mode={mode}_m={m}'\
+                f'_corr={corr_name}_loc={.25}_orth={orthogonal}_seed={seed_data}.pkl'
         else:
+            corr_name = 'None'
             C = None
-        A = generate_sensing_matrix((m, n), mode=mode, orthogonal=orthogonal, correlation=C, loc=.25, seed=idx)
+            supports_name = f'supports_method={support_method}_mode={mode}_m={m}'\
+                f'_orth={orthogonal}_seed={seed_data}.pkl'
+        A = generate_sensing_matrix((m, n), mode=mode, orthogonal=orthogonal, correlation=C, loc=.25, seed=index)
     elif source == 'best':
         # Load the best sensing matrix
-        A_folder = f'ecg_N=10000_n={n}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}_isnr={isnr}_seed={seed}'
-        A_name = f'A_N=1000_n={n}_m={m}_mode={mode}_seed={seed}.pkl'
+
+        A_folder = f'ecg_N=10000_n={n}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}_isnr={isnr}_seed={seed_data_matrix}'
+        A_name = f'sensing_matrix_M={M}_m={m}_mode={mode}_seed={seed_matrix}'
         data_path = os.path.join(dataset_dir, A_folder, 'A_Filippo')
         with open(os.path.join(data_path, A_name), 'rb') as f:
             A_dict = pickle.load(f)
@@ -86,9 +102,13 @@ def training(
     Y = cs.encode(X)  # measurements
 
     # ------------------ Labels (support) ------------------
-    data_path = os.path.join(data_folder, f'n{n}_ISNR', f'trSet_n={n}_m={m}_isnr={isnr}-label.h5')
-    with pd.HDFStore(data_path, mode='r') as store:
-        Z = store.select('S').values.squeeze()
+    
+    # data_path = os.path.join(data_folder, f'n{n}_ISNR', f'trSet_n={n}_m={m}_isnr={isnr}-label.h5')
+    # with pd.HDFStore(data_path, mode='r') as store:
+    #     Z = store.select('S').values.squeeze()
+    data_path = os.path.join(dataset_dir, data_name, supports_name)
+    with open(data_path, 'rb') as f:
+        Z = pickle.load(f)
 
     # ------------------ Data loaders ------------------
     dataset = TensorDataset(torch.from_numpy(Y).float(), torch.from_numpy(Z).float())  # Create a dataset from the tensors
@@ -112,7 +132,8 @@ def training(
     model_name = f'TSOC-N={N}_n={n}_m={m}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}'\
                 f'_isnr={isnr}_mode={mode}_ort={orthogonal}_epochs={epochs}_bs={batch_size}_opt=sgd_lr={lr}'\
                 f'_th={threshold}_tf={train_fraction}_minlr={min_lr}_p={patience}'\
-                f'_mind={min_delta}_seed={seed}.pth'
+                f'_mind={min_delta}_seed-data={seed_data}_seed-training={seed_training}'\
+                f'_corr={corr_name}-seed_data_matrix={seed_data_matrix}-seed_matrix={seed_matrix}-M={M}.pth'
     model_path = os.path.join(model_folder, model_name)
     # ------------------ Trining loop ------------------
     if os.path.exists(model_path):
@@ -194,7 +215,8 @@ def parse_args():
     parser.add_argument('--m', '-m', type=int, required=True, help="Number of measurements")
     parser.add_argument('--isnr', '-i', type=int, required=True, help="Signal-to-noise ratio (SNR)")
     parser.add_argument('--mode', '-md', type=str, choices=['standard', 'rakeness'], required=True, help="Measurement matrix mode: 'standard' or 'rakeness'")
-    parser.add_argument('--seed', '-s', type=int, required=True, help="Random seed for reproducibility")
+    parser.add_argument('--seed_data', '-sd', type=int, required=True, help="Data-related random seed for reproducibility")
+    parser.add_argument('--seed_training', '-st', type=int, required=True, help="Training-related random seed for reproducibility")
     parser.add_argument('--index', '-idx', type=int, required=True, help="Seed for random or index for (one of) the best Measurement matrix")
     parser.add_argument('--epochs', '-e', type=int, default=500, help="Number of training epochs")
     parser.add_argument('--lr', '-l', type=float, default=0.1, help="Learning rate")
@@ -213,6 +235,9 @@ def parse_args():
     parser.add_argument('--min_lr', '-minlr', type=float, default=0.001, help="Minimum learning rate")
     parser.add_argument('--min_delta', '-mind', type=float, default=1e-4, help="Minimum delta for early stopping and ReduceLROnPlateau")
     parser.add_argument('--patience', '-pt', type=int, default=40, help="Patience for early stopping")
+    # parser.add_argument('--seed_data_matrix', '-sdm', type=int, default=0, help="Sensing matrix data-related random seed for reproducibility")
+    # parser.add_argument('--seed_matrix', '-sm', type=int, default=0, help="Sensing matrix-related random seed for reproducibility")
+    # parser.add_argument('--M', '-M', type=int, default=10000, help="Number of evaluated sensing matrices ")
     
     return parser.parse_args()
 
@@ -237,7 +262,8 @@ if __name__ == '__main__':
         orthogonal=args.orthogonal,
         source=args.source,
         index=args.index,
-        seed=args.seed,
+        seed_data=args.seed_data,
+        seed_training=args.seed_training,
         processes=args.processes,
         threshold=args.threshold,
         gpu=args.gpu,
@@ -245,5 +271,8 @@ if __name__ == '__main__':
         factor=args.factor,
         min_lr=args.min_lr,
         min_delta=args.min_delta,
-        patience=args.patience
+        patience=args.patience,
+        # seed_data_matrix=args.seed_data_matrix,
+        # seed_matrix=args.seed_matrix,
+        # M = args.M
     )
