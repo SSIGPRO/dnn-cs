@@ -27,17 +27,14 @@ logging.basicConfig(level=logging.DEBUG)
 
 def training(
     n, m, epochs, lr, batch_size, N, basis, fs, heart_rate, isnr, mode, 
-    orthogonal, source, index,
-    # seed_data, 
-    seed_training, processes, threshold, gpu, train_fraction, factor, 
-    min_lr, min_delta, patience,
-    # seed_data_matrix, seed_matrix, M
+    orthogonal, source, index, seed_training, processes, threshold, gpu, train_fraction, factor, 
+    min_lr, min_delta, patience
 ):
 
 
     # ------------------ Constants ------------------
     corr_name = '96af96a7ddfcb2f6059092c250e18f2a.pkl'
-    support_method = 'TSOC2'
+    support_method = 'TSOC'
     seed_data = 11
     seed_support = 0
     seed_data_matrix = 0
@@ -73,11 +70,6 @@ def training(
     with open(data_path, 'rb') as f:
         X = pickle.load(f)
 
-    # data_folder = '/srv/newpenny/dnn-cs/JETCAS2020/data/'
-    # data_path = os.path.join(data_folder, f'n{n}_ISNR', f'trSet_n={n}_isnr={isnr}_no-sparse.h5')
-    # with pd.HDFStore(data_path, mode='r') as store:
-    #     X = store.select('X').values.squeeze()
-
     # ------------------ Compressed Sensing ------------------
     D = wavelet_basis(n, basis, level=2)
 
@@ -110,10 +102,6 @@ def training(
     Y = cs.encode(X)  # measurements
 
     # ------------------ Labels (support) ------------------
-    
-    # data_path = os.path.join(data_folder, f'n{n}_ISNR', f'trSet_n={n}_m={m}_isnr={isnr}-label.h5')
-    # with pd.HDFStore(data_path, mode='r') as store:
-    #     Z = store.select('S').values.squeeze()
     data_path = os.path.join(dataset_dir, data_name, supports_name)
     with open(data_path, 'rb') as f:
         Z = pickle.load(f)
@@ -132,8 +120,7 @@ def training(
     # Create data loaders for training and validation
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=processes)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=processes)
-    # train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-    # val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
+
     # ------------------ Neural Network initialization ------------------
     tsoc = TSOC(n, m)
     tsoc.to(device) # move the network to GPU
@@ -144,6 +131,7 @@ def training(
                 f'_corr={corr_name}_seed_support={seed_support}_seed_data_matrix={seed_data_matrix}'\
                 f'_seed_matrix={seed_matrix}_M={M}.pth'
     model_path = os.path.join(model_folder, model_name)
+
     # ------------------ Trining loop ------------------
     if os.path.exists(model_path):
         print(f'Model\n{model_name}\nhas already been trained')
@@ -226,7 +214,6 @@ def parse_args():
     parser.add_argument('--m', '-m', type=int, required=True, help="Number of measurements")
     parser.add_argument('--isnr', '-i', type=int, required=True, help="Signal-to-noise ratio (SNR)")
     parser.add_argument('--mode', '-md', type=str, choices=['standard', 'rakeness'], required=True, help="Measurement matrix mode: 'standard' or 'rakeness'")
-    # parser.add_argument('--seed_data', '-sd', type=int, required=True, help="Data-related random seed for reproducibility")
     parser.add_argument('--seed_training', '-st', type=int, required=True, help="Training-related random seed for reproducibility")
     parser.add_argument('--index', '-idx', type=int, required=True, help="Seed for random or index for (one of) the best Measurement matrix")
     parser.add_argument('--epochs', '-e', type=int, default=500, help="Number of training epochs")
@@ -246,9 +233,6 @@ def parse_args():
     parser.add_argument('--min_lr', '-minlr', type=float, default=0.001, help="Minimum learning rate")
     parser.add_argument('--min_delta', '-mind', type=float, default=1e-4, help="Minimum delta for early stopping and ReduceLROnPlateau")
     parser.add_argument('--patience', '-pt', type=int, default=40, help="Patience for early stopping")
-    # parser.add_argument('--seed_data_matrix', '-sdm', type=int, default=0, help="Sensing matrix data-related random seed for reproducibility")
-    # parser.add_argument('--seed_matrix', '-sm', type=int, default=0, help="Sensing matrix-related random seed for reproducibility")
-    # parser.add_argument('--M', '-M', type=int, default=10000, help="Number of evaluated sensing matrices ")
     
     return parser.parse_args()
 
@@ -273,7 +257,6 @@ if __name__ == '__main__':
         orthogonal=args.orthogonal,
         source=args.source,
         index=args.index,
-        # seed_data=args.seed_data,
         seed_training=args.seed_training,
         processes=args.processes,
         threshold=args.threshold,
@@ -282,8 +265,5 @@ if __name__ == '__main__':
         factor=args.factor,
         min_lr=args.min_lr,
         min_delta=args.min_delta,
-        patience=args.patience,
-        # seed_data_matrix=args.seed_data_matrix,
-        # seed_matrix=args.seed_matrix,
-        # M = args.M
+        patience=args.patience
     )

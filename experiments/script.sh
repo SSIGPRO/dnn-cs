@@ -165,7 +165,7 @@ m=32
 corr=96af96a7ddfcb2f6059092c250e18f2a
 loc=0.25
 encoder="standard"
-algorithm="TSOC2"
+algorithm="TSOC"
 orthogonal=True
 
 if [ "$orthogonal" = "True" ]; then
