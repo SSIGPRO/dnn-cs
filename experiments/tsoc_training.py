@@ -15,6 +15,7 @@ import logging
 root = os.path.dirname(os.path.dirname(os.path.realpath('__file__')))
 sys.path.insert(0, os.path.join(root, 'src'))
 
+from models import models_dir
 from dataset import dataset_dir
 from cs.wavelet_basis import wavelet_basis
 from cs.training_metrics import compute_metrics, update_metrics
@@ -26,24 +27,30 @@ logging.basicConfig(level=logging.DEBUG)
 
 def training(
     n, m, epochs, lr, batch_size, N, basis, fs, heart_rate, isnr, mode, 
-    orthogonal, source, index, seed_data, seed_training, processes, threshold, gpu, train_fraction, factor, 
-    min_lr, min_delta, patience, seed_data_matrix, seed_matrix, M
+    orthogonal, source, index,
+    # seed_data, 
+    seed_training, processes, threshold, gpu, train_fraction, factor, 
+    min_lr, min_delta, patience,
+    # seed_data_matrix, seed_matrix, M
 ):
+
+
+    # ------------------ Constants ------------------
+    corr_name = '96af96a7ddfcb2f6059092c250e18f2a.pkl'
+    support_method = 'TSOC2'
+    seed_data = 11
+    seed_data_matrix = 0
+    seed_matrix = 0
+    M = 10000
+
+    # ------------------ Folders ------------------
+    model_folder = f'{models_dir}TSOC'
 
     # ------------------ Show parameter values ------------------
     params = locals()
     params_str = ", ".join(f"{key}={value}" for key, value in params.items())
     logging.info(f"Running test with parameters: {params_str}")
 
-    # ------------------ Folders ------------------
-    model_folder = '/srv/newpenny/dnn-cs/tsoc/trained_models/TSOC'
-
-    # ------------------ Constants ------------------
-    corr_name = '96af96a7ddfcb2f6059092c250e18f2a.pkl'
-    support_method = 'TSOC2'
-    seed_data_matrix = 0
-    seed_matrix = 0
-    M = 10000
     
     # ------------------ Seeds ------------------
     # np.random.seed(seed)
@@ -204,6 +211,8 @@ def training(
                         "  ".join([f'{key}: {np.round(value, 3)}' for key, value in val_metrics.items()]) + "\n") 
 
         # save trained model
+        # ensure the directories exists
+        os.makedirs(os.path.dirname(model_path), exist_ok=True)
         torch.save(tsoc.state_dict(), model_path)
 
 # ------------------ Perser definition ------------------
@@ -215,7 +224,7 @@ def parse_args():
     parser.add_argument('--m', '-m', type=int, required=True, help="Number of measurements")
     parser.add_argument('--isnr', '-i', type=int, required=True, help="Signal-to-noise ratio (SNR)")
     parser.add_argument('--mode', '-md', type=str, choices=['standard', 'rakeness'], required=True, help="Measurement matrix mode: 'standard' or 'rakeness'")
-    parser.add_argument('--seed_data', '-sd', type=int, required=True, help="Data-related random seed for reproducibility")
+    # parser.add_argument('--seed_data', '-sd', type=int, required=True, help="Data-related random seed for reproducibility")
     parser.add_argument('--seed_training', '-st', type=int, required=True, help="Training-related random seed for reproducibility")
     parser.add_argument('--index', '-idx', type=int, required=True, help="Seed for random or index for (one of) the best Measurement matrix")
     parser.add_argument('--epochs', '-e', type=int, default=500, help="Number of training epochs")
@@ -226,7 +235,7 @@ def parse_args():
     parser.add_argument('--fs', '-f', type=int, default=256, help="Sampling frequency")
     parser.add_argument('--heart_rate', '-hr', type=int, nargs=2, default=(60, 100), help="Heart rate range")
     parser.add_argument('--orthogonal', '-o', action='store_true', help="Use orthogonalized measurement matrix (default: False)")
-    parser.add_argument('--source', '-src', type=str, choices=['bast', 'random'], default='best', help="Measurement matrix type: genereated randomly or leading to best performance")
+    parser.add_argument('--source', '-src', type=str, choices=['best', 'random'], default='best', help="Measurement matrix type: genereated randomly or leading to best performance")
     parser.add_argument('--processes', '-p', type=int, default=48, help="Number of CPU processes")
     parser.add_argument('--threshold', '-t', type=float, default=0.5, help="Threshold for metrics")
     parser.add_argument('--gpu', '-g', type=int, default=3, help="GPU index to use for training")
@@ -262,7 +271,7 @@ if __name__ == '__main__':
         orthogonal=args.orthogonal,
         source=args.source,
         index=args.index,
-        seed_data=args.seed_data,
+        # seed_data=args.seed_data,
         seed_training=args.seed_training,
         processes=args.processes,
         threshold=args.threshold,
