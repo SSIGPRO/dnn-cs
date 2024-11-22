@@ -37,7 +37,7 @@ logging.basicConfig(
 )
 
 # ---- data ----
-N = 10_000              # number of ECG traces
+# N = 10000              # number of ECG traces
 n = 128                 # length of an ECG trace
 fs = 256                # sampling rate
 heart_rate = (60, 100)  # min and max heart rate
@@ -51,6 +51,10 @@ def cmdline_args():
     parser = argparse.ArgumentParser(
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    parser.add_argument(
+        "-s", "--size",  type=int, default=10_000,
+        help="number of ECG examples (default: %(default)s)"
     )
     parser.add_argument(
         "-i", "--isnr", type=int, default=None,
@@ -100,7 +104,7 @@ def cmdline_args():
     return parser.parse_args()
 
 
-def main(isnr, method, mode, orth, m, corr, loc, seed, eta_list, processes):
+def main(N, isnr, method, mode, orth, m, corr, loc, seed, eta_list, processes):
 
 
     ############################################################################
@@ -226,6 +230,7 @@ if __name__ == '__main__':
     logger.debug(str(args))
 
     main(
+        args.size,
         args.isnr,
         args.algorithm,
         args.encoder,
