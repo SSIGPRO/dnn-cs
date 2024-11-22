@@ -39,6 +39,7 @@ def training(
     corr_name = '96af96a7ddfcb2f6059092c250e18f2a.pkl'
     support_method = 'TSOC2'
     seed_data = 11
+    seed_support = 0
     seed_data_matrix = 0
     seed_matrix = 0
     M = 10000
@@ -88,12 +89,12 @@ def training(
             with open(corr_path, 'rb') as f:
                 C = pickle.load(f)
             supports_name = f'supports_method={support_method}_mode={mode}_m={m}'\
-                f'_corr={corr_name}_loc={.25}_orth={orthogonal}_seed={seed_data}.pkl'
+                f'_corr={corr_name}_loc={.25}_orth={orthogonal}_seed={seed_support}.pkl'
         else:
             corr_name = 'None'
             C = None
             supports_name = f'supports_method={support_method}_mode={mode}_m={m}'\
-                f'_orth={orthogonal}_seed={seed_data}.pkl'
+                f'_orth={orthogonal}_seed={seed_support}.pkl'
         A = generate_sensing_matrix((m, n), mode=mode, orthogonal=orthogonal, correlation=C, loc=.25, seed=index)
     elif source == 'best':
         # Load the best sensing matrix
@@ -139,8 +140,9 @@ def training(
     model_name = f'TSOC-N={N}_n={n}_m={m}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}'\
                 f'_isnr={isnr}_mode={mode}_ort={orthogonal}_epochs={epochs}_bs={batch_size}_opt=sgd_lr={lr}'\
                 f'_th={threshold}_tf={train_fraction}_minlr={min_lr}_p={patience}'\
-                f'_mind={min_delta}_seed-data={seed_data}_seed-training={seed_training}'\
-                f'_corr={corr_name}-seed_data_matrix={seed_data_matrix}-seed_matrix={seed_matrix}-M={M}.pth'
+                f'_mind={min_delta}_seed_data={seed_data}_seed_training={seed_training}'\
+                f'_corr={corr_name}_seed_support={seed_support}_seed_data_matrix={seed_data_matrix}'\
+                f'_seed_matrix={seed_matrix}_M={M}.pth'
     model_path = os.path.join(model_folder, model_name)
     # ------------------ Trining loop ------------------
     if os.path.exists(model_path):
