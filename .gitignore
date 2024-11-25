@@ -163,3 +163,4 @@ cython_debug/
 
 notebooks/debug.ipynb
 nohup*
+experiments/nohup*
