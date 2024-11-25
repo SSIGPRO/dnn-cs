@@ -110,30 +110,31 @@ m_list=(16 32 48 64)
 seed_list=($(seq 0 19))
 
 isnr=35
-encoder="standard"
+encoder="rakeness"
 algorithm="TSOC2"
+# m=32
 
-for encoder in "standard" "rakeness"
-do
-    for m in "${m_list[@]}"
-    do
-        for seed in "${seed_list[@]}"
-        do
-            echo $isnr $encoder $algorithm $m $seed
-            python experiments/compute_supports.py \
-                --isnr $isnr \
-                --algorithm $algorithm \
-                --encoder $encoder \
-                --measurements $m \
-                --correlation $corr \
-                --localization $loc \
-                --seed $seed \
-                --orthogonal \
-                # --processes \
-                # --vv
-        done
-    done
-done
+# for encoder in "standard" "rakeness"
+# do
+    # for m in "${m_list[@]}"
+    # do
+        # for seed in "${seed_list[@]}"
+        # do
+        #     echo $isnr $encoder $algorithm $m $seed
+        #     python experiments/compute_supports.py \
+        #         --isnr $isnr \
+        #         --algorithm $algorithm \
+        #         --encoder $encoder \
+        #         --measurements $m \
+        #         --correlation $corr \
+        #         --localization $loc \
+        #         --seed $seed \
+        #         --orthogonal \
+        #         # --processes \
+        #         # --vv
+        # done
+    # done
+# done
 
 echo $isnr $encoder $algorithm
 python experiments/compute_rsnr.py \
@@ -142,6 +143,8 @@ python experiments/compute_rsnr.py \
     --isnr $isnr \
     --algorithm $algorithm \
     --encoder $encoder \
+    --correlation $corr \
+    --localization $loc \
     --orthogonal \
+    -v \
     # --processes \
-    # --vv \
