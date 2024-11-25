@@ -35,11 +35,11 @@ def training(
     # ------------------ Constants ------------------
     corr_name = '96af96a7ddfcb2f6059092c250e18f2a.pkl'
     support_method = 'TSOC'
-    seed_data = 11
-    seed_support = 0
-    seed_data_matrix = 0
-    seed_matrix = 0
-    M = 10000
+    seed_data = 11 # seed relative to training data
+    seed_support = 0 # seed used to generate the supports
+    seed_data_matrix = 0 # seed used to generate data for sensing matrix selection
+    seed_matrix = 0 # seed used to select the best sensing matrix on data geneerated with seed_data_matrix
+    M = 1_000 # number of evaluated sensing matrices
 
     # ------------------ Folders ------------------
     model_folder = f'{models_dir}TSOC'
@@ -51,8 +51,6 @@ def training(
 
     
     # ------------------ Seeds ------------------
-    # np.random.seed(seed)
-
     # Set the seed for PyTorch (CPU)
     torch.manual_seed(seed_training)
 
@@ -83,7 +81,6 @@ def training(
             supports_name = f'supports_method={support_method}_mode={mode}_m={m}'\
                 f'_corr={corr_name}_loc={.25}_orth={orthogonal}_seed={seed_support}.pkl'
         else:
-            corr_name = 'None'
             C = None
             supports_name = f'supports_method={support_method}_mode={mode}_m={m}'\
                 f'_orth={orthogonal}_seed={seed_support}.pkl'
@@ -93,8 +90,10 @@ def training(
 
         A_folder = f'ecg_N=10000_n={n}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}_isnr={isnr}_seed={seed_data_matrix}'
         A_name = f'sensing_matrix_M={M}_m={m}_mode={mode}_seed={seed_matrix}'
-        data_path = os.path.join(dataset_dir, A_folder, 'A_Filippo')
-        with open(os.path.join(data_path, A_name), 'rb') as f:
+        if mode == 'rakeness':
+            A_name = f'{A_name}_loc={.25}_corr={corr_name}'
+        data_path = os.path.join(dataset_dir, A_folder, 'A_Filippo', f'{A_name}+.pkl')
+        with open(data_path, 'rb') as f:
             A_dict = pickle.load(f)
         A = A_dict[index]
 
@@ -114,7 +113,7 @@ def training(
 
     # Split the dataset
     generator = torch.Generator()
-    generator.manual_seed(seed)
+    generator.manual_seed(seed_training)
     train_dataset, val_dataset = random_split(dataset, [train_size, val_size], generator=generator)
 
     # Create data loaders for training and validation
@@ -128,9 +127,12 @@ def training(
                 f'_isnr={isnr}_mode={mode}_ort={orthogonal}_epochs={epochs}_bs={batch_size}_opt=sgd_lr={lr}'\
                 f'_th={threshold}_tf={train_fraction}_minlr={min_lr}_p={patience}'\
                 f'_mind={min_delta}_seed_data={seed_data}_seed_training={seed_training}'\
-                f'_corr={corr_name}_seed_support={seed_support}_seed_data_matrix={seed_data_matrix}'\
-                f'_seed_matrix={seed_matrix}_M={M}.pth'
-    model_path = os.path.join(model_folder, model_name)
+                f'_seed_matrix={seed_matrix}_seed_support={seed_support}'        
+    if mode == 'rakeness':
+        model_name = f'{model_name}_corr={corr_name}'
+    if source == 'best':
+        f'{model_name}_seed_data_matrix={seed_data_matrix}_M={M}'
+    model_path = os.path.join(model_folder, f'{model_name}.pth')
 
     # ------------------ Trining loop ------------------
     if os.path.exists(model_path):
