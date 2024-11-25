@@ -54,7 +54,7 @@ class DownSample(nn.Module):
         if simple_pool:
             self.pool = nn.MaxPool1d(kernel_size=pool_kernel_size)
         else:
-            self.pool = nn.Conv1d(in_channels, out_channels, kernel_size=2, stride=2)
+            self.pool = nn.Conv1d(out_channels, out_channels, kernel_size=2, stride=2)
 
 
     def forward(self, x):
