@@ -10,6 +10,12 @@ import logging
 
 import argparse
 
+# limit number of parallel threads numpy spawns
+os.environ["OMP_NUM_THREADS"] = "4"
+os.environ["OPENBLAS_NUM_THREADS"] = "4"
+os.environ["MKL_NUM_THREADS"] = "6"
+os.environ["VECLIB_MAXIMUM_THREADS"] = "4"
+os.environ["NUMEXPR_NUM_THREADS"] = "6"
 import numpy as np
 
 from tqdm import tqdm
@@ -37,12 +43,9 @@ logging.basicConfig(
 )
 
 # ---- data ----
-N = 10_000              # number of ECG traces
 n = 128                 # length of an ECG trace
 fs = 256                # sampling rate
 heart_rate = (60, 100)  # min and max heart rate
-# isnr = 25               # signal-to-noise ratio in dB (35)
-ecg_seed = 0            # random seed for ECG generation
 basis = 'sym6'          # sparsity basis
 
 
@@ -51,6 +54,10 @@ def cmdline_args():
     parser = argparse.ArgumentParser(
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    parser.add_argument(
+        "-s", "--size",  type=int, default=10000,
+        help="number of ECG examples (default: %(default)s)"
     )
     parser.add_argument(
         "-i", "--isnr", type=int, default=None,
@@ -81,7 +88,11 @@ def cmdline_args():
         help="rakeness localization factor (rakeness mode only, default: %(default)s)",
     )
     parser.add_argument(
-        "-s", "--seed", type=int,
+        "--ecg_seed", type=int, default=0,
+        help="Data random seed, default: %(default)s"
+    )
+    parser.add_argument(
+        "--seed", type=int,
         help="random seed"
     )
     parser.add_argument(
@@ -100,7 +111,7 @@ def cmdline_args():
     return parser.parse_args()
 
 
-def main(isnr, method, mode, orth, m, corr, loc, seed, eta_list, processes):
+def main(N, isnr, method, mode, orth, m, corr, loc, ecg_seed, seed, eta_list, processes):
 
 
     ############################################################################
@@ -153,7 +164,7 @@ def main(isnr, method, mode, orth, m, corr, loc, seed, eta_list, processes):
     D = wavelet_basis(n, 'sym6', level=2)
 
     ############################################################################
-    # Compute supports                                      #
+    # Compute supports                                                         #
     ############################################################################
     if method == 'GR':
         
@@ -226,6 +237,7 @@ if __name__ == '__main__':
     logger.debug(str(args))
 
     main(
+        args.size,
         args.isnr,
         args.algorithm,
         args.encoder,
@@ -233,6 +245,7 @@ if __name__ == '__main__':
         args.measurements,
         args.correlation,
         args.localization,
+        args.ecg_seed,
         args.seed,
         args.eta,
         args.processes,

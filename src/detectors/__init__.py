@@ -1,0 +1,1 @@
+detectors_dir = '/srv/newpenny/dnn-cs/tsoc/detectors/'

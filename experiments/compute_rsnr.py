@@ -234,7 +234,8 @@ def main(
 
                 # load supports
                 if not os.path.exists(supports_path(eta)):
-                    raise RuntimeError(f'{supports_path(eta)} not available')
+                    logger.warning(f'{supports_path(eta)} not available')
+                    continue
                 logger.debug(f'loading supports')
                 with open(supports_path(eta), 'rb') as f:
                     S = pickle.load(f)
@@ -283,7 +284,8 @@ def main(
             # load supports
             _path = supports_path(m, seed)
             if not os.path.exists(_path):
-                raise RuntimeError(f'supports {_path} not available')
+                logger.warning(f'supports {_path} not available')
+                continue
             logger.debug(f'loading supports {_path}')
             with open(_path, 'rb') as f:
                 S = pickle.load(f)
