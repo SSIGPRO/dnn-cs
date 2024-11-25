@@ -161,10 +161,10 @@ seed=0              # Random seed for support estimation
 processes=64    # Number of parallel processes
 
 # Parameters of the support of the training data
-m=32
+m=48
 corr=96af96a7ddfcb2f6059092c250e18f2a
 loc=0.25
-encoder="standard"
+encoder="rakeness"
 algorithm="TSOC"
 orthogonal=True
 
@@ -210,13 +210,13 @@ python ./experiments/compute_supports.py \
 # seed_training=0     # Training-related random seed for reproducibility
 # isnr=35             # Signal-to-noise ratio (SNR)
 # mode="standard"     # Encoder mode, change to 'rakeness' if needed
-# gpu=1               # GPU index
+# gpu=3               # GPU index
 # train_fraction=0.9  # Fraction of data used for training
 # factor=0.2          # Factor for ReduceLROnPlateau scheduler
 # min_lr=0.001        # Minimum learning rate
 # min_delta=1e-4      # Minimum delta for early stopping and ReduceLROnPlateau
 # patience=40         # Patience for early stopping
-# epochs=500          # Number of training epochs
+# epochs=2          # Number of training epochs
 # lr=0.1              # Learning rate
 # batch_size=50       # Batch size for training
 # N=2000000           # Number of training instances
@@ -225,7 +225,7 @@ python ./experiments/compute_supports.py \
 # heart_rate="60 100" # Heart rate range
 # threshold=0.5       # Threshold for metrics
 # orthogonal=True     # Whether to use orthogonalized matrix
-# source='best'       # Whether to use best or random matrix
+# source='random'       # Whether to use best or random matrix
 # index=0             # Index or seed of the best or random matrix, respectivelly
 # processes=48        # Number of CPU processes for parallelism
 
