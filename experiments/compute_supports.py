@@ -88,11 +88,11 @@ def cmdline_args():
         help="rakeness localization factor (rakeness mode only, default: %(default)s)",
     )
     parser.add_argument(
-        "-esd", "--ecg_seed", type=int, default=0,
+        "--ecg_seed", type=int, default=0,
         help="Data random seed, default: %(default)s"
     )
     parser.add_argument(
-        "-sd", "--seed", type=int,
+        "--seed", type=int,
         help="random seed"
     )
     parser.add_argument(
