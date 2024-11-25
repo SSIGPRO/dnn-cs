@@ -10,6 +10,12 @@ import logging
 
 import argparse
 
+# limit number of parallel threads numpy spawns
+os.environ["OMP_NUM_THREADS"] = "4"
+os.environ["OPENBLAS_NUM_THREADS"] = "4"
+os.environ["MKL_NUM_THREADS"] = "6"
+os.environ["VECLIB_MAXIMUM_THREADS"] = "4"
+os.environ["NUMEXPR_NUM_THREADS"] = "6"
 import numpy as np
 
 from tqdm import tqdm
@@ -82,11 +88,11 @@ def cmdline_args():
         help="rakeness localization factor (rakeness mode only, default: %(default)s)",
     )
     parser.add_argument(
-        "-esd", "--ecg_seed", type=int, default=0,
+        "--ecg_seed", type=int, default=0,
         help="Data random seed, default: %(default)s"
     )
     parser.add_argument(
-        "-sd", "--seed", type=int,
+        "--seed", type=int,
         help="random seed"
     )
     parser.add_argument(
