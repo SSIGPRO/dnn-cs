@@ -27,6 +27,8 @@ sys.path.insert(0, os.path.join(root, 'src'))
 from cs.wavelet_basis import wavelet_basis
 from cs import CompressedSensing, generate_sensing_matrix
 from detectors import detectors_dir
+from dataset import dataset_dir
+
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -54,7 +56,7 @@ def test(
 
     # ------------------ Signal ------------------
     # load training data
-    data_name = f'ecg_N={N}_n={n}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}'\
+    data_name = f'ecg_N={N_train}_n={n}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}'\
                 f'_isnr={isnr}_seed={seed_train_data}'
     data_path = os.path.join(dataset_dir, data_name+'.pkl')
     with open(data_path, 'rb') as f:
@@ -169,7 +171,7 @@ def parse_args():
     parser.add_argument('-tf', '--train_fraction', type=float, default=0.9, help="Fraction of data used for training")
     parser.add_argument('-B', '--basis', type=str, default='sym6', help="Wavelet basis function")
     parser.add_argument('-f', '--fs', type=int, default=256, help="Sampling frequency")
-    parser.add_argument('-hr', '--heart_rate', type=str, default='60,100', help="Heart rate range (comma-separated, e.g., 60,100)")
+    parser.add_argument('--heart_rate', '-hr', type=int, nargs=2, default=(60, 100), help="Heart rate range")
     parser.add_argument('-o', '--orthogonal', action='store_true', help="Use orthogonalized measurement matrix (default: False)")
     parser.add_argument('--source', '-src', type=str, choices=['best', 'random'], default='best', help="Sensing matrix type: genereated randomly or leading to best performance")
 

@@ -423,7 +423,7 @@ detector_type="OCSVM" # Detector type to evaluate (e.g., SPE, OCSVM, LOF)
 
 # Detector-specific configuration
 # k=5                 # Parameter k for SPE, T2, or related detectors
-ks=(16, 32, 48, 64, 80, 96, 112)
+ks=(16 32 48 64 80 96 112)
 order=1             # Order parameter for AR detector
 kernel="rbf"        # Kernel type for OCSVM (e.g., linear, rbf, poly)
 nu=0.5              # Anomaly fraction for OCSVM
@@ -440,7 +440,6 @@ for detector_type in "SPE" "T2"
 do
     for k in "${ks[@]}"
     do
-
     # Run the evaluation script with the selected configuration
     python train_detector.py \
         --n $n \
@@ -453,7 +452,7 @@ do
         --train_fraction $train_fraction \
         --basis $basis \
         --fs $fs \
-        --heart_rate "$heart_rate" \
+        --heart_rate $heart_rate \
         $orthogonal_flag \
         --source $source \
         --index $index \
