@@ -124,11 +124,15 @@ def test(
         detector = pk_pk()
         detector_label = detector_type
         
-    # fit the detector
+     # fit the detector
     model_name = f'{detector_label}_N={N_train}_n={n}_m={m}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}'\
-                 f'_isnr={isnr}_mode={mode}_ort={orthogonal}_tf={train_fraction}_seed={seed}'\
-                f'_seed_data={seed_train_data}_seed_training={seed_training}_seed_matrix={seed_matrix}.pkl'
-    model_path = os.path.join(detectors_dir, model_name)
+            f'_isnr={isnr}_mode={mode}_ort={orthogonal}_tf={train_fraction}_seed={seed}'\
+            f'_seed_data={seed_train_data}_seed_training={seed_training}_seed_matrix={seed_matrix}'
+    if mode == 'rakeness':
+        model_name = f'_{model_name}_corr={corr_name}'
+    if source == 'best':
+        model_name = f'_{model_name}_seed_data_matrix={seed_data_matrix}_M={M}'
+    model_path = os.path.join(detectors_dir, f'{model_name}.pkl')
     # stop if already trained
     if os.path.exists(model_path):
         print(f'{detector_label} already trained')

@@ -237,12 +237,12 @@ def test(
         # fit the detector
         model_name = f'{detector_label}_N={N_train}_n={n}_m={m}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}'\
                 f'_isnr={isnr}_mode={mode}_ort={orthogonal}_tf={train_fraction}_seed={seed}'\
-                f'_seed_data={seed_train_data}_seed_training={seed_training}_seed_matrix={seed_matrix}.pkl'
+                f'_seed_data={seed_train_data}_seed_training={seed_training}_seed_matrix={seed_matrix}'
         if mode == 'rakeness':
             model_name = f'{model_name}_corr={corr_name}'
         if source == 'best':
             model_name = f'{model_name}_seed_data_matrix={seed_data_matrix}_M={M}'
-        model_path = os.path.join(detectors_dir, model_name)
+        model_path = os.path.join(detectors_dir, f'{model_name}.pkl')
         # load if already trained
         if os.path.exists(model_path):
             with open(model_path, 'rb') as f:
