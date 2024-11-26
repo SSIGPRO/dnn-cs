@@ -78,6 +78,20 @@ def generate(N, n, fs, heart_rate, isnr, seed_ok, seed_ko, delta, processes):
     # generate anomalous data for each anomaly
     print("Generation KO ECG data...")
     for anomaly_label, anomaly in tqdm.tqdm(anomalies_dict.items()):
+        ko_name = f'ecg_anomaly_{anomaly_label}_N={N}_n={n}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}'\
+                    f'_isnr={isnr}_delta={delta}_seedok={seed_ok}_seedko={seed_ko}.pkl'
+        ok_folder = f'ecg_N={N}_n={n}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}'\
+                    f'_isnr={isnr}_seed={seed_ok}'
+
+        ko_path = os.path.join(dataset_dir, ok_folder, 'anomalies', f'delta={delta}', f'seed={seed_ko}', ko_name)
+        # ensure the directories exists
+        os.makedirs(os.path.dirname(ko_path), exist_ok=True)
+
+        # check if the file already exists
+        if os.path.exists(ko_path):
+            print(f"{anomaly_label} anomaly already exists.")
+            continue  # skip to the next anomaly label
+        
         if anomaly_label in ['SpectralAlteration']:
             anomaly.fit(Xok, isnr)
         else:
@@ -91,15 +105,7 @@ def generate(N, n, fs, heart_rate, isnr, seed_ok, seed_ko, delta, processes):
         # rescale back the data
         Xko = Xko*std + mean
 
-        # save data
-        ko_name = f'ecg_anomaly_{anomaly_label}_N={N}_n={n}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}'\
-                    f'_isnr={isnr}_delta={delta}_seedok={seed_ok}_seedko={seed_ko}.pkl'
-        ok_folder = f'ecg_N={N}_n={n}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}'\
-                    f'_isnr={isnr}_seed={seed_ok}'
-
-        ko_path = os.path.join(dataset_dir, ok_folder, 'anomalies', f'delta={delta}', f'seed={seed_ko}', ko_name)
-        # ensure the directories exists
-        os.makedirs(os.path.dirname(ko_path), exist_ok=True)
+        # save data        
         with open(ko_path, 'wb') as f:
             pickle.dump(Xko, f)
 
