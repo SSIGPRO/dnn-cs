@@ -126,7 +126,8 @@ def test(
         
     # fit the detector
     model_name = f'{detector_label}_N={N_train}_n={n}_m={m}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}'\
-    f'_isnr={isnr}_seed={seed}.pkl'
+                 f'_isnr={isnr}_mode={mode}_ort={orthogonal}_tf={train_fraction}_seed={seed}'\
+                f'_seed_data={seed_train_data}_seed_training={seed_training}_seed_matrix={seed_matrix}.pkl'
     model_path = os.path.join(detectors_dir, model_name)
     # stop if already trained
     if os.path.exists(model_path):

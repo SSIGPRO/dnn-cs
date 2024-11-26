@@ -236,7 +236,8 @@ def test(
 
         # fit the detector
         model_name = f'{detector_label}_N={N_train}_n={n}_m={m}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}'\
-        f'_isnr={isnr}_seed={seed}.pkl'
+                f'_isnr={isnr}_mode={mode}_ort={orthogonal}_tf={train_fraction}_seed={seed}'\
+                f'_seed_data={seed_train_data}_seed_training={seed_training}_seed_matrix={seed_matrix}.pkl'
         model_path = os.path.join(detectors_dir, model_name)
         # load if already trained
         if os.path.exists(model_path):
@@ -295,9 +296,9 @@ def parse_args():
     parser.add_argument('-i', '--isnr', type=int, required=True, help="Signal-to-noise ratio (SNR) in dB")
     parser.add_argument('-dt', '--detector_type', type=str, required=True, help="Type of detector to evaluate (e.g., TSOC, SPE, OCSVM, LOF)")
     parser.add_argument('-dlt', '--delta', type=float, required=True, help="Anomaly intensity parameter")
-    parser.add_argument('-N', '--N_train', type=int, default=2_000_000, help="Number of training samples")
+    parser.add_argument('-N', '--N_train', type=int, default=2000000, help="Number of training samples")
     parser.add_argument('-tf', '--train_fraction', type=float, default=0.9, help="Fraction of data used for training")
-    parser.add_argument('-M', '--N_test', type=int, default=10_000, help="Number of test samples")
+    parser.add_argument('-M', '--N_test', type=int, default=10000, help="Number of test samples")
     parser.add_argument('-B', '--basis', type=str, default='sym6', help="Wavelet basis function")
     parser.add_argument('-f', '--fs', type=int, default=256, help="Sampling frequency")
     parser.add_argument('-hr', '--heart_rate', type=str, default='60,100', help="Heart rate range (comma-separated, e.g., 60,100)")
