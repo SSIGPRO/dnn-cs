@@ -186,7 +186,12 @@ def test(
         file_model = f'TSOC-N={N_train}_n={n}_m={m}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}'\
                 f'_isnr={isnr}_mode={mode}_ort={orthogonal}_epochs={epochs}_bs={batch_size}_opt=sgd_lr={lr}'\
                 f'_th={threshold}_tf={train_fraction}_minlr={min_lr}_p={patience}'\
-                f'_mind={min_delta}_seed={seed}.pth'
+                f'_mind={min_delta}_seed_data={seed_train_data}_seed_training={seed_training}'\
+                f'_seed_matrix={seed_matrix}_seed_support={seed_support}'        
+        if mode == 'rakeness':
+            file_model = f'{file_model}_corr={corr_name}'
+        if source == 'best':
+            f'{file_model}_seed_data_matrix={seed_data_matrix}_M={M}'
         detector = TSOCDetector(n, m, file_model, seed, mode=detector_mode, gpu=device)
         detector = detector.fit()
 
