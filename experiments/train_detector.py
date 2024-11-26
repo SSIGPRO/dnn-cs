@@ -42,7 +42,7 @@ def test(
     seed_train_data = 11
     seed_training = 0 # seed for training data split
     seed_data_matrix = 0
-    seed_matrix = 0
+    seed_selection = 0
     M = 1_000
 
     # ------------------ Show parameter values ------------------
@@ -80,7 +80,7 @@ def test(
         # Load the best sensing matrix
 
         A_folder = f'ecg_N=10000_n={n}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}_isnr={isnr}_seed={seed_data_matrix}'
-        A_name = f'sensing_matrix_M={M}_m={m}_mode={mode}_seed={seed_matrix}'
+        A_name = f'sensing_matrix_M={M}_m={m}_mode={mode}_seed={seed_selection}'
         if mode == 'rakeness':
             A_name = f'{A_name}_loc={.25}_corr={corr_name}'
         data_path = os.path.join(dataset_dir, A_folder, 'A_Filippo', f'{A_name}+.pkl')
@@ -128,12 +128,13 @@ def test(
         
      # fit the detector
     model_name = f'{detector_label}_N={N_train}_n={n}_m={m}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}'\
-            f'_isnr={isnr}_mode={mode}_ort={orthogonal}_tf={train_fraction}_seed_detector={seed_detector}'\
-            f'_seed_data={seed_train_data}_seed_training={seed_training}_seed_matrix={seed_matrix}'
+                f'_isnr={isnr}_mode={mode}_src={source}_ort={orthogonal}_seedmat={index}_tf={train_fraction}_seeddet={seed_detector}'\
+                f'_seeddata={seed_train_data}_seedtrain={seed_training}_seedselect={seed_selection}'
     if mode == 'rakeness':
         model_name = f'_{model_name}_corr={corr_name}'
     if source == 'best':
-        model_name = f'_{model_name}_seed_data_matrix={seed_data_matrix}_M={M}'
+        model_name = f'_{model_name}_seeddatamat={seed_data_matrix}_M={M}'
+    model_path = os.path.join(detectors_dir, f'{model_name}.pkl')
     model_path = os.path.join(detectors_dir, f'{model_name}.pkl')
     # stop if already trained
     if os.path.exists(model_path):

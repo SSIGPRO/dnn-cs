@@ -47,7 +47,7 @@ def test(
     seed_training = 0 # seed for training data split
     seed_support = 0
     seed_data_matrix = 0
-    seed_matrix = 0
+    seed_selection = 0
     seed_detector = 0
     M = 1_000
 
@@ -96,7 +96,7 @@ def test(
         # Load the best sensing matrix
 
         A_folder = f'ecg_N=10000_n={n}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}_isnr={isnr}_seed={seed_data_matrix}'
-        A_name = f'sensing_matrix_M={M}_m={m}_mode={mode}_seed={seed_matrix}'
+        A_name = f'sensing_matrix_M={M}_m={m}_mode={mode}_seed={seed_selection}'
         if mode == 'rakeness':
             A_name = f'{A_name}_loc={.25}_corr={corr_name}'
         data_path = os.path.join(dataset_dir, A_folder, 'A_Filippo', f'{A_name}+.pkl')
@@ -184,15 +184,15 @@ def test(
 
     # evaluate TSOC-based detector
     if 'TSOC' in detector_type:
-        model_name = f'TSOC-N={N_train}_n={n}_m={m}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}'\
-                f'_isnr={isnr}_mode={mode}_ort={orthogonal}_epochs={epochs}_bs={batch_size}_opt=sgd_lr={lr}'\
+        model_name = f'TSOC-N={N}_n={n}_m={m}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}'\
+                f'_isnr={isnr}_mode={mode}_src={source}_ort={orthogonal}_seedmat={index}_epochs={epochs}_bs={batch_size}_opt=sgd_lr={lr}'\
                 f'_th={threshold}_tf={train_fraction}_minlr={min_lr}_p={patience}'\
-                f'_mind={min_delta}_seed_data={seed_train_data}_seed_training={seed_training}'\
-                f'_seed_matrix={seed_matrix}_seed_support={seed_support}'        
+                f'_mind={min_delta}_seeddata={seed_train_data}_seedtrain={seed_training}'\
+                f'_seedselect={seed_selection}_seedsup={seed_support}'        
         if mode == 'rakeness':
             model_name = f'_{model_name}_corr={corr_name}'
         if source == 'best':
-            model_name = f'_{model_name}_seed_data_matrix={seed_data_matrix}_M={M}'
+            model_name = f'_{model_name}_seeddatamat={seed_data_matrix}_M={M}'
         model_path = os.path.join(model_folder, f'{model_name}.pth')
         detector = TSOCDetector(n, m, model_path, seed, mode=detector_mode, gpu=device)
         detector = detector.fit()
@@ -237,12 +237,12 @@ def test(
 
         # load the detector
         model_name = f'{detector_label}_N={N_train}_n={n}_m={m}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}'\
-                f'_isnr={isnr}_mode={mode}_ort={orthogonal}_tf={train_fraction}_seed_detector={seed_detector}'\
-                f'_seed_data={seed_train_data}_seed_training={seed_training}_seed_matrix={seed_matrix}'
+                f'_isnr={isnr}_mode={mode}_src={source}_ort={orthogonal}_seedmat={index}_tf={train_fraction}_seeddet={seed_detector}'\
+                f'_seeddata={seed_train_data}_seedtrain={seed_training}_seedselect={seed_selection}'
         if mode == 'rakeness':
             model_name = f'_{model_name}_corr={corr_name}'
         if source == 'best':
-            model_name = f'_{model_name}_seed_data_matrix={seed_data_matrix}_M={M}'
+            model_name = f'_{model_name}_seeddatamat={seed_data_matrix}_M={M}'
         model_path = os.path.join(detectors_dir, f'{model_name}.pkl')
         
         if os.path.exists(model_path):
@@ -264,7 +264,7 @@ def test(
         metric_value = detector.test(Zanom, metric='AUC')
         result.loc[anomaly_label] = metric_value
 
-    results_path = os.path.join(results_folder, f'AUC_{model_name}_delta={delta}_seed_ko={seed_ko}.pkl')
+    results_path = os.path.join(results_folder, f'AUC_detector={model_name}_delta={delta}_seedko={seed_ko}.pkl')
     pd.to_pickle(result, results_path)
 
 # ------------------ Parser definition ------------------
