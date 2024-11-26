@@ -145,7 +145,8 @@ def test(
     # initialize the dataframe for anomalous data
     Xko_df = pd.DataFrame(
         index=np.arange(N_test),
-        columns=pd.MultiIndex.from_product([anomalies_labels, np.arange(n)])
+        columns=pd.MultiIndex.from_product([anomalies_labels, np.arange(n)]),
+        dtype=np.float64
     )
 
     Yko_df = pd.DataFrame(
