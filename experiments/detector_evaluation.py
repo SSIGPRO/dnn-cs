@@ -243,34 +243,14 @@ def test(
         if source == 'best':
             model_name = f'_{model_name}_seed_data_matrix={seed_data_matrix}_M={M}'
         model_path = os.path.join(detectors_dir, f'{model_name}.pkl')
-        # load if already trained
+        # load the detector
         if os.path.exists(model_path):
             with open(model_path, 'rb') as f:
                 detector = pickle.load(f)
-        # fit
         else:
-            # load training data
-            data_name = f'ecg_N={N}_n={n}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}'\
-                        f'_isnr={isnr}_seed={seed_train_data}'
-            data_path = os.path.join(dataset_dir, data_name+'.pkl')
-            with open(data_path, 'rb') as f:
-                X_train = pickle.load(f)
-            Y_train = cs.encode(X_train)
-
-            train_size = int(train_fraction * len(Y_train))  # 80% for training
-            val_size = len(Y_train) - train_size  # 20% for validation
-
-            # Split the dataset into training and validation
-            generator = torch.Generator()
-            generator.manual_seed(seed_training)
-            train_dataset, val_dataset = random_split(Y_train, [train_size, val_size], generator=generator)
-            Y_train, _ = train_dataset.dataset, val_dataset.dataset
-            detector = detector.fit(Y_train)
-
-            # save
-            with open(model_path,'wb') as f:
-                pickle.dump(detector, f)
-        
+            print(f'detector {detector_label} has not been trained')
+            sys.exit(0)
+            
     # ------------------ Evaluate the detector for each anomaly ------------------
     for anomaly_label in tqdm.tqdm(anomalies_labels):
         # define the anomalous dataset
