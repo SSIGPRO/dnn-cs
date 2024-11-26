@@ -42,7 +42,6 @@ def test(
 ):
     # ------------------ Constants ------------------
     corr_name = '96af96a7ddfcb2f6059092c250e18f2a.pkl'
-    support_method = 'TSOC'
     seed_train_data = 11
     seed_test_data = 66
     seed_training = 0 # seed for training data split
@@ -183,16 +182,17 @@ def test(
 
     # evaluate TSOC-based detector
     if 'TSOC' in detector_type:
-        file_model = f'TSOC-N={N_train}_n={n}_m={m}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}'\
+        model_name = f'TSOC-N={N_train}_n={n}_m={m}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}'\
                 f'_isnr={isnr}_mode={mode}_ort={orthogonal}_epochs={epochs}_bs={batch_size}_opt=sgd_lr={lr}'\
                 f'_th={threshold}_tf={train_fraction}_minlr={min_lr}_p={patience}'\
                 f'_mind={min_delta}_seed_data={seed_train_data}_seed_training={seed_training}'\
                 f'_seed_matrix={seed_matrix}_seed_support={seed_support}'        
         if mode == 'rakeness':
-            file_model = f'{file_model}_corr={corr_name}'
+            model_name = f'{model_name}_corr={corr_name}'
         if source == 'best':
-            f'{file_model}_seed_data_matrix={seed_data_matrix}_M={M}'
-        detector = TSOCDetector(n, m, file_model, seed, mode=detector_mode, gpu=device)
+            f'{model_name}_seed_data_matrix={seed_data_matrix}_M={M}'
+        model_path = os.path.join(model_folder, f'{model_name}.pth')
+        detector = TSOCDetector(n, m, model_path, seed, mode=detector_mode, gpu=device)
         detector = detector.fit()
 
     # evaluate a standard detector
@@ -239,7 +239,6 @@ def test(
         model_path = os.path.join(detectors_dir, model_name)
         # load if already trained
         if os.path.exists(model_path):
-            
             with open(model_path, 'rb') as f:
                 detector = pickle.load(f)
         # fit
