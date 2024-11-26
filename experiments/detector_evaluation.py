@@ -29,6 +29,7 @@ from cs.wavelet_basis import wavelet_basis
 from cs import CompressedSensing, generate_sensing_matrix
 from detectors.tsoc import TSOCDetector
 from detectors import detectors_dir
+from models import models_dir
 
 
 logging.basicConfig(level=logging.DEBUG)
@@ -39,35 +40,41 @@ def test(
     min_delta, patience, detector_type, delta, N_test, detector_mode, 
     k, order, kernel, nu, neighbors, estimators
 ):
+    # ------------------ Constants ------------------
+    corr_name = '96af96a7ddfcb2f6059092c250e18f2a.pkl'
+    support_method = 'TSOC'
+    seed_train_data = 11
+    seed_test_data = 66
+    seed_training = 0 # seed for training data split
+    seed_support = 0
+    seed_data_matrix = 0
+    seed_matrix = 0
+    M = 1_000
+
+    # ------------------ Folders ------------------
+    model_folder = f'{models_dir}TSOC'
+    results_folder = '/srv/newpenny/dnn-cs/tsoc/results/TSOC/detection'
+
     # ------------------ Show parameter values ------------------
     params = locals()
     params_str = ", ".join(f"{key}={value}" for key, value in params.items())
     logging.info(f"Running test with parameters: {params_str}")
 
-    # ------------------ Folders ------------------
-    data_folder = '/srv/newpenny/dnn-cs/JETCAS2020/data/'
-    results_folder = '/srv/newpenny/dnn-cs/tsoc/results/TSOC/detection'
-
+    
     # ------------------ Seeds ------------------
     np.random.seed(seed)
-
-    # Set the seed for PyTorch (CPU)
-    torch.manual_seed(seed)
-
-    # Set the seed for PyTorch (GPU)
-    torch.cuda.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)  # For multi-GPU setups
 
     # ------------------ GPU ------------------
     device = torch.device(f'cuda:{gpu}' if torch.cuda.is_available() else 'cpu')
 
-
     # ------------------ Signal ------------------
     # load test data
-    data_path = os.path.join(data_folder, f'n{n}_ISNR', f'tsSet_n={n}_isnr={isnr}_no-sparse.h5')
-    with pd.HDFStore(data_path, mode='r') as store:
-        X = store.select('X').values.squeeze()
-    X = X[:N_test]
+    # ------------------ Signal ------------------
+    data_name = f'ecg_N={N_test}_n={n}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}'\
+                f'_isnr={isnr}_seed={seed_test_data}'
+    data_path = os.path.join(dataset_dir, data_name+'.pkl')
+    with open(data_path, 'rb') as f:
+        X = pickle.load(f)
     
     # standarize the data
     std, mean = X.std(), X.mean()
@@ -229,9 +236,12 @@ def test(
                 detector = pickle.load(f)
         # fit
         else:
-            data_path = os.path.join(data_folder, f'n{n}_ISNR', f'trSet_n={n}_isnr={isnr}_no-sparse.h5')
-            with pd.HDFStore(data_path, mode='r') as store:
-                X_train = store.select('X').values.squeeze()
+            # load training data
+            data_name = f'ecg_N={N}_n={n}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}'\
+                        f'_isnr={isnr}_seed={seed_train_data}'
+            data_path = os.path.join(dataset_dir, data_name+'.pkl')
+            with open(data_path, 'rb') as f:
+                X_train = pickle.load(f)
             Y_train = cs.encode(X_train)
 
             train_size = int(train_fraction * len(Y_train))  # 80% for training
@@ -239,9 +249,9 @@ def test(
 
             # Split the dataset into training and validation
             generator = torch.Generator()
-            generator.manual_seed(seed)
+            generator.manual_seed(seed_training)
             train_dataset, val_dataset = random_split(Y_train, [train_size, val_size], generator=generator)
-            Y_train, Y_val = train_dataset.dataset, val_dataset.dataset
+            Y_train, _ = train_dataset.dataset, val_dataset.dataset
             detector = detector.fit(Y_train)
 
             # save
