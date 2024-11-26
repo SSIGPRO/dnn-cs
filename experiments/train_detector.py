@@ -34,7 +34,7 @@ logging.basicConfig(level=logging.DEBUG)
 
 def test(
     n, m, N_train, basis, fs, heart_rate, isnr, mode, train_fraction,
-    orthogonal, source, index, seed, detector_type, 
+    orthogonal, source, index, seed_detector, detector_type, 
     k, order, kernel, nu, neighbors, estimators
 ):
     # ------------------ Constants ------------------
@@ -52,7 +52,7 @@ def test(
 
     
     # ------------------ Seeds ------------------
-    np.random.seed(seed)
+    np.random.seed(seed_detector)
 
     # ------------------ Signal ------------------
     # load training data
@@ -128,7 +128,7 @@ def test(
         
      # fit the detector
     model_name = f'{detector_label}_N={N_train}_n={n}_m={m}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}'\
-            f'_isnr={isnr}_mode={mode}_ort={orthogonal}_tf={train_fraction}_seed={seed}'\
+            f'_isnr={isnr}_mode={mode}_ort={orthogonal}_tf={train_fraction}_seed_detector={seed_detector}'\
             f'_seed_data={seed_train_data}_seed_training={seed_training}_seed_matrix={seed_matrix}'
     if mode == 'rakeness':
         model_name = f'_{model_name}_corr={corr_name}'
@@ -162,7 +162,7 @@ def parse_args():
     # Core arguments
     parser.add_argument('-n', '--n', type=int, required=True, help="Number of samples per signal")
     parser.add_argument('-m', '--m', type=int, required=True, help="Number of measurements")
-    parser.add_argument('-s', '--seed', type=int, required=True, help="Random seed for reproducibility")
+    parser.add_argument('-s', '--seed_detector', type=int, required=True, help="Random seed associated to the detector")
     parser.add_argument('-md', '--mode', type=str, choices=['standard', 'rakeness'], required=True, help="Sensing matrix mode: 'standard' or 'rakeness'")
     parser.add_argument('-idx', '--index', type=int, required=True, help="Seed for random or index for (one of) the best sensing matrix")
     parser.add_argument('-i', '--isnr', type=int, required=True, help="Signal-to-noise ratio (SNR) in dB")
@@ -203,7 +203,7 @@ if __name__ == "__main__":
         orthogonal=args.orthogonal,
         source=args.source,
         index=args.index,
-        seed=args.seed,
+        seed_detector=args.seed_detector,
         detector_type=args.detector_type,
         k=args.k,
         order=args.order,

@@ -36,7 +36,7 @@ logging.basicConfig(level=logging.DEBUG)
 
 def test(
     n, m, epochs, lr, batch_size, N_train, basis, fs, heart_rate, isnr, mode, 
-    orthogonal, source, index, seed, processes, threshold, gpu, train_fraction, factor, min_lr, 
+    orthogonal, source, index, seed_ko, processes, threshold, gpu, train_fraction, factor, min_lr, 
     min_delta, patience, detector_type, delta, N_test, detector_mode, 
     k, order, kernel, nu, neighbors, estimators
 ):
@@ -48,6 +48,7 @@ def test(
     seed_support = 0
     seed_data_matrix = 0
     seed_matrix = 0
+    seed_detector = 0
     M = 1_000
 
     # ------------------ Folders ------------------
@@ -61,7 +62,7 @@ def test(
 
     
     # ------------------ Seeds ------------------
-    np.random.seed(seed)
+    np.random.seed(seed_ko)
 
     # ------------------ GPU ------------------
     device = torch.device(f'cuda:{gpu}' if torch.cuda.is_available() else 'cpu')
@@ -234,16 +235,16 @@ def test(
             detector_label = detector_type
             
 
-        # fit the detector
+        # load the detector
         model_name = f'{detector_label}_N={N_train}_n={n}_m={m}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}'\
-                f'_isnr={isnr}_mode={mode}_ort={orthogonal}_tf={train_fraction}_seed={seed}'\
+                f'_isnr={isnr}_mode={mode}_ort={orthogonal}_tf={train_fraction}_seed_detector={seed_detector}'\
                 f'_seed_data={seed_train_data}_seed_training={seed_training}_seed_matrix={seed_matrix}'
         if mode == 'rakeness':
             model_name = f'_{model_name}_corr={corr_name}'
         if source == 'best':
             model_name = f'_{model_name}_seed_data_matrix={seed_data_matrix}_M={M}'
         model_path = os.path.join(detectors_dir, f'{model_name}.pkl')
-        # load the detector
+        
         if os.path.exists(model_path):
             with open(model_path, 'rb') as f:
                 detector = pickle.load(f)
@@ -263,8 +264,7 @@ def test(
         metric_value = detector.test(Zanom, metric='AUC')
         result.loc[anomaly_label] = metric_value
 
-    results_path = os.path.join(results_folder, f'AUC-{detector_label}_N={N_train}_n={n}_m={m}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}'\
-        f'_isnr={isnr}_seed={seed}.pkl')
+    results_path = os.path.join(results_folder, f'AUC_{model_name}_delta={delta}_seed_ko={seed_ko}.pkl')
     pd.to_pickle(result, results_path)
 
 # ------------------ Parser definition ------------------
@@ -274,7 +274,7 @@ def parse_args():
     # Core arguments
     parser.add_argument('-n', '--n', type=int, required=True, help="Number of samples per signal")
     parser.add_argument('-m', '--m', type=int, required=True, help="Number of measurements")
-    parser.add_argument('-s', '--seed', type=int, required=True, help="Random seed for reproducibility")
+    parser.add_argument('-s', '--seed_ko', type=int, required=True, help="Random seed for reproducibility")
     parser.add_argument('-md', '--mode', type=str, choices=['standard', 'rakeness'], required=True, help="Sensing matrix mode: 'standard' or 'rakeness'")
     parser.add_argument('-idx', '--index', type=int, required=True, help="Seed for random or index for (one of) the best sensing matrix")
     parser.add_argument('-i', '--isnr', type=int, required=True, help="Signal-to-noise ratio (SNR) in dB")
@@ -285,7 +285,7 @@ def parse_args():
     parser.add_argument('-M', '--N_test', type=int, default=10000, help="Number of test samples")
     parser.add_argument('-B', '--basis', type=str, default='sym6', help="Wavelet basis function")
     parser.add_argument('-f', '--fs', type=int, default=256, help="Sampling frequency")
-    parser.add_argument('-hr', '--heart_rate', type=str, default='60,100', help="Heart rate range (comma-separated, e.g., 60,100)")
+    parser.add_argument('--heart_rate', '-hr', type=int, nargs=2, default=(60, 100), help="Heart rate range")
     parser.add_argument('-o', '--orthogonal', action='store_true', help="Use orthogonalized measurement matrix (default: False)")
     parser.add_argument('--source', '-src', type=str, choices=['best', 'random'], default='best', help="Sensing matrix type: genereated randomly or leading to best performance")
     parser.add_argument('-p', '--processes', type=int, default=48, help="Number of CPU processes")
@@ -332,7 +332,7 @@ if __name__ == "__main__":
         orthogonal=args.orthogonal,
         source=args.source,
         index=args.index,
-        seed=args.seed,
+        seed_ko=args.seed_ko,
         processes=args.processes,
         threshold=args.threshold,
         gpu=args.gpu,

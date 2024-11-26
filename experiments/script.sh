@@ -272,96 +272,6 @@
 #     done
 
 
-################################################################################
-# Anomaly Detection Evaluation                                                 #
-################################################################################
-
-# # Configuration Section
-# n=128               # Number of samples per signal
-# m=32              # Number of measurements
-# seed=0              # Random seed for reproducibility
-# isnr=35             # Signal-to-noise ratio (SNR)
-# mode="standard"     # Encoder mode, change to 'rakeness' if needed
-# N_train=2000000     # Number of training instances
-# N_test=10000        # Number of test instances
-# train_fraction=0.9  # Fraction of data used for training
-# basis="sym6"        # Wavelet basis function
-# fs=256              # Sampling frequency
-# heart_rate="60 100" # Heart rate range
-# orthogonal=True     # Whether to use orthogonalized measurement matrix
-# source='random'       # Whether to use best or random matrix
-# index=0             # Index or seed of the best or random matrix, respectivelly
-# processes=48        # Number of CPU processes
-# gpu=3               # GPU index for evaluation
-
-# detector_type="ZC"  # Detector type to evaluate (e.g., TSOC, SPE, OCSVM)
-# delta=0.1           # Anomaly intensity parameter
-
-# # TSOC-specific configuration
-# detector_mode="self-assessment"  # Mode of operation for TSOC
-# factor=0.2                # Augmentation/scheduling factor
-# min_lr=0.001              # Minimum learning rate for optimizers
-# min_delta=1e-4            # Minimum change in monitored metric for early stopping
-# patience=40               # Patience for early stopping
-# epochs=500                # Number of epochs for training
-# lr=0.1                    # Learning rate
-# batch_size=50             # Batch size for training
-# threshold=0.5             # Threshold for TSOC detector
-
-# # Standard detectors-related arguments
-# # Parameter k for SPE, T2:
-# k=5
-# # Order parameter for AR detector:                       
-# order=1
-# # Parameters for OCSVM:                 
-# kernel="rbf"              
-# nu=0.5                    
-# # Number of neighbors for LOF detector
-# neighbors=10
-# # Number of estimators for IF detector                      
-# estimators=100                     
-
-# if [ "$orthogonal" = "True" ]; then
-#     orthogonal_flag="--orthogonal"
-# else
-#     orthogonal_flag=""
-# fi
-
-# # Run the evaluation script with the selected configuration
-# python detector_evaluation.py \
-#     --n $n \
-#     --m $m \
-#     --seed $seed \
-#     --mode $mode \
-#     --isnr $isnr \
-#     --detector_type $detector_type \
-#     --delta $delta \
-#     --N_train $N_train \
-#     --N_test $N_test \
-#     --train_fraction $train_fraction \
-#     --basis $basis \
-#     --fs $fs \
-#     --heart_rate "$heart_rate" \
-#     $orthogonal_flag \
-#     --source $source \
-#     --index $index \
-#     --processes $processes \
-#     --gpu $gpu \
-#     --detector_mode $detector_mode \
-#     --factor $factor \
-#     --min_lr $min_lr \
-#     --min_delta $min_delta \
-#     --patience $patience \
-#     --epochs $epochs \
-#     --lr $lr \
-#     --batch_size $batch_size \
-#     --threshold $threshold \
-#     --k $k \
-#     --order $order \
-#     --kernel $kernel \
-#     --nu $nu \
-#     --neighbors $neighbors \
-#     --estimators $estimators
 
 ################################################################################
 # ECG Anomaly Data Generation #
@@ -400,14 +310,14 @@
 #     --processes $processes \
 
 
-################################################################################
-# Standarid detectors training                                                            #
-################################################################################
+###############################################################################
+# Standard detectors training                                                 #
+###############################################################################
 
 # Configuration Section
 n=128               # Number of samples per signal
 m=32                # Number of measurements
-seed=0              # Random seed for reproducibility
+seed_detector=0     # Random seed associated to the detector
 isnr=35             # Signal-to-noise ratio (SNR)
 mode="standard"     # Sensing matrix mode, change to 'rakeness' if needed
 N_train=2000000     # Number of training instances
@@ -419,16 +329,18 @@ orthogonal=True     # Whether to use orthogonalized measurement matrix
 source='random'     # Sensing matrix source: 'best' or 'random'
 index=0             # Index or seed for the sensing matrix
 
-detector_type="OCSVM" # Detector type to evaluate (e.g., SPE, OCSVM, LOF)
+detector_type="AR" # Detector type to evaluate (e.g., SPE, OCSVM, LOF)
 
 # Detector-specific configuration
-# k=5                 # Parameter k for SPE, T2, or related detectors
-ks=(16 32 48 64 80 96 112)
+k=5                 # Parameter k for SPE, T2, or related detectors
 order=1             # Order parameter for AR detector
 kernel="rbf"        # Kernel type for OCSVM (e.g., linear, rbf, poly)
 nu=0.5              # Anomaly fraction for OCSVM
 neighbors=10        # Number of neighbors for LOF detector
 estimators=100      # Number of estimators for IF detector
+
+ks=(16 32 48 64 80 96 112)
+orders=(1 2 4 8 16 32)
 
 if [ "$orthogonal" = "True" ]; then
     orthogonal_flag="--orthogonal"
@@ -436,15 +348,18 @@ else
     orthogonal_flag=""
 fi
 
-for detector_type in "SPE" "T2" 
+# for detector_type in "SPE" "T2" 
+# do
+#     for k in "${ks[@]}"
+# for detector_type in "AR"
+# do
+for order in "${orders[@]}"
 do
-    for k in "${ks[@]}"
-    do
     # Run the evaluation script with the selected configuration
     python train_detector.py \
         --n $n \
         --m $m \
-        --seed $seed \
+        --seed_detector $seed_detector \
         --mode $mode \
         --isnr $isnr \
         --detector_type $detector_type \
@@ -462,7 +377,106 @@ do
         --nu $nu \
         --neighbors $neighbors \
         --estimators $estimators
-    done
 done
+# done
+
+
+################################################################################
+# Anomaly Detection Evaluation                                                 #
+################################################################################
+
+# # Configuration Section
+# n=128               # Number of samples per signal
+# m=32              # Number of measurements
+# seed_ko=0           # Random seed for anomalies generation
+# isnr=35             # Signal-to-noise ratio (SNR)
+# mode="standard"     # Encoder mode, change to 'rakeness' if needed
+# N_train=2000000     # Number of training instances
+# N_test=10000        # Number of test instances
+# train_fraction=0.9  # Fraction of data used for training
+# basis="sym6"        # Wavelet basis function
+# fs=256              # Sampling frequency
+# heart_rate="60 100" # Heart rate range
+# orthogonal=True     # Whether to use orthogonalized measurement matrix
+# source='random'       # Whether to use best or random matrix
+# index=0             # Index or seed of the best or random matrix, respectivelly
+# processes=48        # Number of CPU processes
+# gpu=3               # GPU index for evaluation
+
+# detector_type="ZC"  # Detector type to evaluate (e.g., TSOC, SPE, OCSVM)
+# delta=0.1           # Anomaly intensity parameter
+
+# # TSOC-specific configuration
+# detector_mode="self-assessment"  # Mode of operation for TSOC
+# factor=0.2                # Augmentation/scheduling factor
+# min_lr=0.001              # Minimum learning rate for optimizers
+# min_delta=1e-4            # Minimum change in monitored metric for early stopping
+# patience=40               # Patience for early stopping
+# epochs=500                # Number of epochs for training
+# lr=0.1                    # Learning rate
+# batch_size=50             # Batch size for training
+# threshold=0.5             # Threshold for TSOC detector
+
+# # Standard detectors-related arguments
+# # Parameter k for SPE, T2:
+# k=5
+# ks=(16 32 48 64 80 96 112)
+# # Order parameter for AR detector:                       
+# order=1
+# # Parameters for OCSVM:                 
+# kernel="rbf"              
+# nu=0.5                    
+# # Number of neighbors for LOF detector
+# neighbors=10
+# # Number of estimators for IF detector                      
+# estimators=100                     
+
+# if [ "$orthogonal" = "True" ]; then
+#     orthogonal_flag="--orthogonal"
+# else
+#     orthogonal_flag=""
+# fi
+
+# for detector_type in "SPE" "T2" 
+# do
+#     for k in "${ks[@]}"
+#     do
+#     # Run the evaluation script with the selected configuration
+#     python detector_evaluation.py \
+#         --n $n \
+#         --m $m \
+#         --seed_ko $seed_ko \
+#         --mode $mode \
+#         --isnr $isnr \
+#         --detector_type $detector_type \
+#         --delta $delta \
+#         --N_train $N_train \
+#         --N_test $N_test \
+#         --train_fraction $train_fraction \
+#         --basis $basis \
+#         --fs $fs \
+#         --heart_rate $heart_rate \
+#         $orthogonal_flag \
+#         --source $source \
+#         --index $index \
+#         --processes $processes \
+#         --gpu $gpu \
+#         --detector_mode $detector_mode \
+#         --factor $factor \
+#         --min_lr $min_lr \
+#         --min_delta $min_delta \
+#         --patience $patience \
+#         --epochs $epochs \
+#         --lr $lr \
+#         --batch_size $batch_size \
+#         --threshold $threshold \
+#         --k $k \
+#         --order $order \
+#         --kernel $kernel \
+#         --nu $nu \
+#         --neighbors $neighbors \
+#         --estimators $estimators
+#     done
+# done
 
 
