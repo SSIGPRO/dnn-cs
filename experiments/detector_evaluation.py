@@ -24,7 +24,7 @@ from wombats.detectors.ml_based import *
 root = os.path.dirname(os.path.dirname(os.path.realpath('__file__')))
 sys.path.insert(0, os.path.join(root, 'src'))
 
-from dataset.synthetic_ecg import generate_ecg
+from dataset import dataset_dir
 from cs.wavelet_basis import wavelet_basis
 from cs import CompressedSensing, generate_sensing_matrix
 from detectors.tsoc import TSOCDetector
