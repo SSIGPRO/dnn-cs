@@ -105,10 +105,10 @@ def test(
         detector = OCSVM(kernel, nu)
         detector_label = f'OCSVM_kernel={kernel}_nu={nu}'
     elif detector_type == 'LOF':
-        detector = LOF(h)
+        detector = LOF(neighbors)
         detector_label = f'LOF_neighbors={neighbors}'
     elif detector_type == 'IF':
-        detector = IF(l)
+        detector = IF(estimators)
         detector_label = f'IF_estimators={estimators}'
     elif detector_type == 'MD':
         detector = MD()
