@@ -124,7 +124,7 @@ def training(
     tsoc = TSOC(n, m)
     tsoc.to(device) # move the network to GPU
     model_name = f'TSOC-N={N}_n={n}_m={m}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}'\
-                f'_isnr={isnr}_mode={mode}_src={source}_ort={orthogonal}_epochs={epochs}_bs={batch_size}_opt=sgd_lr={lr}'\
+                f'_isnr={isnr}_mode={mode}_src={source}_ort={orthogonal}_seedmat={index}_epochs={epochs}_bs={batch_size}_opt=sgd_lr={lr}'\
                 f'_th={threshold}_tf={train_fraction}_minlr={min_lr}_p={patience}'\
                 f'_mind={min_delta}_seeddata={seed_data}_seedtrain={seed_training}'\
                 f'_seedselect={seed_selection}_seedsup={seed_support}'        
