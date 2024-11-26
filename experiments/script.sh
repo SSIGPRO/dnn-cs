@@ -158,13 +158,15 @@ heart_rate=(60 100) # Heart rate range
 isnr=35         # Intrinsic signal-to-noise ratio
 ecg_seed=11         # Random seed for data generation
 seed=0              # Random seed for support estimation
-processes=64    # Number of parallel processes
+processes=4    # Number of parallel processes
 
 # Parameters of the support of the training data
-m=48
+# m=48
+# m_list=(16 32 48 64)
+m_list=(32 48)
 corr=96af96a7ddfcb2f6059092c250e18f2a
 loc=0.25
-encoder="rakeness"
+# encoder="rakeness"
 algorithm="TSOC"
 orthogonal=True
 
@@ -184,20 +186,25 @@ python ./experiments/generate_ecg.py \
     --processes $processes \
     -vv
 
-python ./experiments/compute_supports.py \
-    --size $N_train \
-    --isnr $isnr \
-    --algorithm $algorithm \
-    --encoder $encoder \
-    --measurements $m \
-    --correlation $corr \
-    --localization $loc \
-    --ecg_seed $ecg_seed\
-    --seed $seed \
-    $orthogonal_flag \
-    --processes $processes\
-    -vv
-
+for encoder in "standard" "rakeness" 
+do
+    for m in "${m_list[@]}"
+    do
+        python ./experiments/compute_supports.py \
+            --size $N_train \
+            --isnr $isnr \
+            --algorithm $algorithm \
+            --encoder $encoder \
+            --measurements $m \
+            --correlation $corr \
+            --localization $loc \
+            --ecg_seed $ecg_seed\
+            --seed $seed \
+            $orthogonal_flag \
+            --processes $processes\
+            -vv
+    done
+done
 # ###############################################################################
 # TSOC Training for Multiple Configurations                             #
 # ###############################################################################
@@ -368,7 +375,7 @@ python ./experiments/compute_supports.py \
 # isnr=35         # Intrinsic signal-to-noise ratio
 # seed_ok=66         # Random seed for normal data
 # seed_ko=2         # Random seed for anomalous data
-# delta=0.1       # Intensity of anomalies
+# delta=0.005       # Intensity of anomalies
 # processes=48    # Number of parallel processes
 
 # python ./experiments/generate_ecg.py \
