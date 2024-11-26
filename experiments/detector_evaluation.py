@@ -57,7 +57,7 @@ def test(
     # ------------------ Show parameter values ------------------
     params = locals()
     params_str = ", ".join(f"{key}={value}" for key, value in params.items())
-    logging.info(f"Running test with parameters: {params_str}")
+    logging.info(f"Training {detector_type} detector with parameters: {params_str}")
 
     
     # ------------------ Seeds ------------------
@@ -201,22 +201,22 @@ def test(
     elif detector_type in standard_detectors:
         if detector_type == 'SPE':
             detector = SPE(k)
-            detector_label = f'SPE_{k}'
+            detector_label = f'SPE_k={k}'
         elif detector_type == 'T2':
             detector = T2(k)
-            detector_label = f'T2_{k}'
+            detector_label = f'T2_k={k}'
         elif detector_type == 'AR':
             detector = AR(order)
-            detector_label = f'AR_{order}'
+            detector_label = f'AR_order={order}'
         elif detector_type == 'OCSVM':
             detector = OCSVM(kernel, nu)
-            detector_label = f'OCSVM_{kernel}_{nu}'
+            detector_label = f'OCSVM_kernel={kernel}_nu={nu}'
         elif detector_type == 'LOF':
             detector = LOF(h)
-            detector_label = f'LOF_{neighbors}'
+            detector_label = f'LOF_neighbors={neighbors}'
         elif detector_type == 'IF':
             detector = IF(l)
-            detector_label = f'IF_{estimators}'
+            detector_label = f'IF_estimators={estimators}'
         elif detector_type == 'MD':
             detector = MD()
             detector_label = detector_type
