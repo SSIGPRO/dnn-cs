@@ -69,7 +69,6 @@ def test(
 
     # ------------------ Signal ------------------
     # load test data
-    # ------------------ Signal ------------------
     data_name = f'ecg_N={N_test}_n={n}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}'\
                 f'_isnr={isnr}_seed={seed_test_data}'
     data_path = os.path.join(dataset_dir, data_name+'.pkl')
@@ -82,25 +81,33 @@ def test(
 
     # ------------------ Compressed Sensing ------------------
     D = wavelet_basis(n, basis, level=2)
+
     # Sensing matrix
     if source == 'random':
         # Generate a random sensing matrix
         if mode == 'rakeness':
-            corr_name = '96af96a7ddfcb2f6059092c250e18f2a.pkl'
             corr_path = os.path.join(dataset_dir, 'correlation', corr_name)
             with open(corr_path, 'rb') as f:
                 C = pickle.load(f)
+            supports_name = f'supports_method={support_method}_mode={mode}_m={m}'\
+                f'_corr={corr_name}_loc={.25}_orth={orthogonal}_seed={seed_support}.pkl'
         else:
             C = None
+            supports_name = f'supports_method={support_method}_mode={mode}_m={m}'\
+                f'_orth={orthogonal}_seed={seed_support}.pkl'
         A = generate_sensing_matrix((m, n), mode=mode, orthogonal=orthogonal, correlation=C, loc=.25, seed=index)
     elif source == 'best':
         # Load the best sensing matrix
-        A_folder = f'ecg_N=10000_n={n}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}_isnr={isnr}_seed={seed}'
-        A_name = f'A_N=1000_n={n}_m={m}_mode={mode}_seed={seed}.pkl'
-        data_path = os.path.join(dataset_dir, A_folder, 'A_Filippo')
-        with open(os.path.join(data_path, A_name), 'rb') as f:
+
+        A_folder = f'ecg_N=10000_n={n}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}_isnr={isnr}_seed={seed_data_matrix}'
+        A_name = f'sensing_matrix_M={M}_m={m}_mode={mode}_seed={seed_matrix}'
+        if mode == 'rakeness':
+            A_name = f'{A_name}_loc={.25}_corr={corr_name}'
+        data_path = os.path.join(dataset_dir, A_folder, 'A_Filippo', f'{A_name}+.pkl')
+        with open(data_path, 'rb') as f:
             A_dict = pickle.load(f)
         A = A_dict[index]
+
     cs = CompressedSensing(A, D)
     Y = cs.encode(X)  # measurements
 
