@@ -156,17 +156,19 @@ n=128           # Length of each ECG signal
 fs=256          # Sampling frequency
 heart_rate=(60 100) # Heart rate range
 isnr=35         # Intrinsic signal-to-noise ratio
-ecg_seed=11         # Random seed for data generation
-seed=0              # Random seed for support estimation
-processes=4    # Number of parallel processes
+ecg_seed=11     # Random seed for data generation
+processes=4     # Number of parallel processes
 
 # Parameters of the support of the training data
 # m=48
-m_list=(16 32 48 64)
-# m_list=(16 64)
+# m_list=(16 32 48 64)
+m_list=(48)
 corr=96af96a7ddfcb2f6059092c250e18f2a
 loc=0.25
 # encoder="rakeness"
+source='best'    # Whether to use best or random sensing matrix
+seed=0           # "Random" seed for sensing matrix generation or index of the "best" sensing matrix according to "source"
+seed_list=(0 1 2 3 4 5 6 7)
 algorithm="TSOC"
 orthogonal=False
 
@@ -195,6 +197,7 @@ do
             --isnr $isnr \
             --algorithm $algorithm \
             --encoder $encoder \
+            --source $source \
             --measurements $m \
             --correlation $corr \
             --localization $loc \
@@ -211,19 +214,19 @@ done
 
 # # Configuration Section
 # n=128               # Number of samples per signal
-# # m=32                # Number of measurements
+# m=48                # Number of measurements
 # # m_list=(16 32 48 64)
-# m_list=(32 48 64)
-# seed_training=0     # Training-related random seed for reproducibility
+# m_list=(48)
+# seed_training=5     # Training-related random seed for reproducibility
 # isnr=35             # Signal-to-noise ratio (SNR)
 # mode="standard"     # Encoder mode, change to 'rakeness' if needed
-# gpu=3               # GPU index
+# gpu=1               # GPU index
 # train_fraction=0.9  # Fraction of data used for training
 # factor=0.2          # Factor for ReduceLROnPlateau scheduler
 # min_lr=0.001        # Minimum learning rate
 # min_delta=1e-4      # Minimum delta for early stopping and ReduceLROnPlateau
 # patience=40         # Patience for early stopping
-# epochs=2          # Number of training epochs
+# epochs=500          # Number of training epochs
 # lr=0.1              # Learning rate
 # batch_size=50       # Batch size for training
 # N=2000000           # Number of training instances
@@ -232,7 +235,7 @@ done
 # heart_rate="60 100" # Heart rate range
 # threshold=0.5       # Threshold for metrics
 # orthogonal=True     # Whether to use orthogonalized matrix
-# source='random'       # Whether to use best or random matrix
+# source='best'       # Whether to use best or random matrix
 # index=0             # Index or seed of the best or random matrix, respectivelly
 # processes=48        # Number of CPU processes for parallelism
 
@@ -316,7 +319,7 @@ done
 
 # # Configuration Section
 # n=128               # Number of samples per signal
-# m=32                # Number of measurements
+# m=48                # Number of measurements
 # seed_detector=0     # Random seed associated to the detector
 # isnr=35             # Signal-to-noise ratio (SNR)
 # mode="standard"     # Sensing matrix mode, change to 'rakeness' if needed
@@ -326,18 +329,21 @@ done
 # fs=256              # Sampling frequency
 # heart_rate="60 100" # Heart rate range
 # orthogonal=True     # Whether to use orthogonalized measurement matrix
-# source='random'     # Sensing matrix source: 'best' or 'random'
+# source='best'     # Sensing matrix source: 'best' or 'random'
 # index=0             # Index or seed for the sensing matrix
 
-# detector_type="AR" # Detector type to evaluate (e.g., SPE, OCSVM, LOF)
+# detector_type="LOF" # Detector type to evaluate (e.g., SPE, OCSVM, LOF)
 
 # # Detector-specific configuration
 # k=5                 # Parameter k for SPE, T2, or related detectors
 # order=1             # Order parameter for AR detector
 # kernel="rbf"        # Kernel type for OCSVM (e.g., linear, rbf, poly)
-# nu=0.5              # Anomaly fraction for OCSVM
-# neighbors=10        # Number of neighbors for LOF detector
+# nu=0.01              # Anomaly fraction for OCSVM
+# nu_list=(0.001 0.01 0.1)
+# neighbors=20        # Number of neighbors for LOF detector
+# neighbors_list=(5 10 20 50)
 # estimators=100      # Number of estimators for IF detector
+# estimators_list=(5 10 20 50 100 200 500 1000)
 
 # ks=(1 2 4 8 16 24)
 # orders=(1 2 4 8 16 24)
@@ -351,11 +357,11 @@ done
 # # for detector_type in "SPE" "T2" 
 # # do
 # #     for k in "${ks[@]}"
-# # for detector_type in "AR"
-# # do
-# for order in "${orders[@]}"
+# # for order in "${orders[@]}"
+# # for nu in "${nu_list[@]}"
+# # for estimators in "${estimators_list[@]}"
+# for neighbors in "${neighbors_list[@]}"
 # do
-#     # Run the evaluation script with the selected configuration
 #     python train_detector.py \
 #         --n $n \
 #         --m $m \
@@ -378,7 +384,7 @@ done
 #         --neighbors $neighbors \
 #         --estimators $estimators
 # done
-# # done
+# done
 
 
 ################################################################################

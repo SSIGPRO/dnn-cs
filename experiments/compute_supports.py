@@ -47,6 +47,9 @@ n = 128                 # length of an ECG trace
 fs = 256                # sampling rate
 heart_rate = (60, 100)  # min and max heart rate
 basis = 'sym6'          # sparsity basis
+seed_data_matrix = 0    # seed used to generate data for sensing matrix selection
+seed_selection = 0      # seed used to select the best sensing matrix on data geneerated with seed_data_matrix
+M = 1_000               # number of evaluated sensing matrices to choose the 8 best 
 
 
 def cmdline_args():
@@ -72,6 +75,10 @@ def cmdline_args():
         help="compressed sensing encoding mode (default: %(default)s)",
     )
     parser.add_argument(
+        '--source', type=str, choices=('best', 'random'), default='random',
+        help="Measurement matrix type: genereated randomly or leading to best performance (default: %(default)s)",
+        )
+    parser.add_argument(
         "-o", "--orthogonal", action='store_true',
         help="weather sensing matrix is orthogonal",
     )
@@ -93,7 +100,7 @@ def cmdline_args():
     )
     parser.add_argument(
         "--seed", type=int,
-        help="random seed"
+        help="either random seed or index in case of random or best sensing matrix respectively"
     )
     parser.add_argument(
         "--eta", type=float, nargs='+', 
@@ -111,9 +118,8 @@ def cmdline_args():
     return parser.parse_args()
 
 
-def main(N, isnr, method, mode, orth, m, corr, loc, ecg_seed, seed, eta_list, processes):
-
-
+def main(N, isnr, method, mode, source, orth, m, corr, loc, ecg_seed, seed, eta_list, processes):
+    
     ############################################################################
     # PATHs                                                                    #
     ############################################################################
@@ -137,21 +143,19 @@ def main(N, isnr, method, mode, orth, m, corr, loc, ecg_seed, seed, eta_list, pr
         
     if method in ('TSOC', 'TSOC2'):
         if mode == 'standard':
-            supports_name = f'supports_method={method}_mode={mode}_m={m}'\
-                f'_orth={orth}_seed={seed}.pkl'
+            supports_name_ = f'supports_method={method}_mode={mode}_m={m}'\
+                f'_orth={orth}'
             
         elif mode == 'rakeness':
-            supports_name = f'supports_method={method}_mode={mode}_m={m}'\
-                f'_corr={corr}_loc={loc}_orth={orth}_seed={seed}.pkl'
+            supports_name_ = f'supports_method={method}_mode={mode}_m={m}'\
+                f'_corr={corr}_loc={loc}_orth={orth}'
             
             corr_path = os.path.join(dataset_dir, 'correlation', corr + '.pkl')
             if not os.path.exists(corr_path):
                 raise RuntimeError(f'correlation {corr} not available')
 
-        supports_path = os.path.join(supports_dir, supports_name)
-        if os.path.exists(supports_path):
-            logger.info(f'supports {supports_path} already exists')
-            return
+        supports_path = lambda seed: os.path.join(
+            supports_dir, f'{supports_name_}_seed={seed}.pkl')
     
     ############################################################################
     # Load Data                                                                #
@@ -189,19 +193,36 @@ def main(N, isnr, method, mode, orth, m, corr, loc, ecg_seed, seed, eta_list, pr
     elif method in ('TSOC', 'TSOC2'):
 
         # Generate Sensing Matrix and set Compressed Sensing system
-        if mode == 'standard':
+        
+        # Sensing matrix
+        if source == 'random':
+            # Generate a random sensing matrix
+            if mode == 'rakeness':
+                logger.debug(f'loading correlation {corr}')
+                with open(corr_path, 'rb') as f:
+                    C = pickle.load(f)
+            else:
+                C = None
             logger.debug(f'generating sensing matrix ({m}, {n}), seed={seed}')
-            A = generate_sensing_matrix(
-                (m, n), mode=mode, orthogonal=orth, seed=seed)
-            
-        if mode == 'rakeness':
-            logger.debug(f'loading correlation {corr}')
-            with open(corr_path, 'rb') as f:
-                C = pickle.load(f)
-            logger.debug(f'generating sensing matrix ({m}, {n}), seed={seed}')
-            A = generate_sensing_matrix(
-                (m, n), mode=mode, orthogonal=orth, 
-                correlation=C, loc=loc, seed=seed)
+            A = generate_sensing_matrix((m, n), mode=mode, orthogonal=orth, correlation=C, loc=.25, seed=seed)
+        elif source == 'best':
+            # Load the best sensing matrix
+
+            A_folder = f'ecg_N=10000_n={n}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}_isnr={isnr}_seed={seed_data_matrix}'
+            A_name = f'sensing_matrix_M={M}_m={m}_mode={mode}_seed={seed_selection}'
+            if mode == 'rakeness':
+                A_name = f'{A_name}_loc={.25}_corr={corr}'
+            data_path = os.path.join(dataset_dir, A_folder, 'A_Filippo', f'{A_name}.pkl')
+            logger.debug(f'loading {seed+1}-th best sensing matrix')
+            with open(data_path, 'rb') as f:
+                A_dict = pickle.load(f)
+            A = A_dict[seed]['matrix']
+            seed = A_dict[seed]['seed']
+            logger.debug(f'sensing matrix ({m}, {n}) with seed={seed} loaded')
+
+        if os.path.exists(supports_path(seed)):
+            logger.info(f'supports {supports_path(seed)} already exists')
+            return
         
         cs = CompressedSensing(A, D)
         
@@ -219,7 +240,7 @@ def main(N, isnr, method, mode, orth, m, corr, loc, ecg_seed, seed, eta_list, pr
         S = np.stack(S)
 
         logger.debug(f'storing supports')
-        with open(supports_path, 'wb') as f:
+        with open(supports_path(seed), 'wb') as f:
                 pickle.dump(S, f)
 
 
@@ -241,6 +262,7 @@ if __name__ == '__main__':
         args.isnr,
         args.algorithm,
         args.encoder,
+        args.source,
         args.orthogonal,
         args.measurements,
         args.correlation,
