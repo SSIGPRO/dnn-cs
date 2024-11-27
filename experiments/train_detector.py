@@ -86,7 +86,7 @@ def test(
         data_path = os.path.join(dataset_dir, A_folder, 'A_Filippo', f'{A_name}.pkl')
         with open(data_path, 'rb') as f:
             A_dict = pickle.load(f)
-        A = A_dict[index]
+        A = A_dict[index]['matrix']
 
     cs = CompressedSensing(A, D)
     Y_train = cs.encode(X_train) # measurements
