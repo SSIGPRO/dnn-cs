@@ -150,61 +150,61 @@
 # ECG Training Data Generation                                                 #
 ################################################################################
 
-# # Parameters of the training data
-# N_train=2000000 # Number of ECG training examples
-# n=128           # Length of each ECG signal
-# fs=256          # Sampling frequency
-# heart_rate=(60 100) # Heart rate range
-# isnr=35         # Intrinsic signal-to-noise ratio
-# ecg_seed=11         # Random seed for data generation
-# seed=0              # Random seed for support estimation
-# processes=4    # Number of parallel processes
+# Parameters of the training data
+N_train=2000000 # Number of ECG training examples
+n=128           # Length of each ECG signal
+fs=256          # Sampling frequency
+heart_rate=(60 100) # Heart rate range
+isnr=35         # Intrinsic signal-to-noise ratio
+ecg_seed=11         # Random seed for data generation
+seed=0              # Random seed for support estimation
+processes=4    # Number of parallel processes
 
-# # Parameters of the support of the training data
-# # m=48
-# # m_list=(16 32 48 64)
-# m_list=(32 48)
-# corr=96af96a7ddfcb2f6059092c250e18f2a
-# loc=0.25
-# # encoder="rakeness"
-# algorithm="TSOC"
-# orthogonal=True
+# Parameters of the support of the training data
+# m=48
+m_list=(16 32 48 64)
+# m_list=(16 64)
+corr=96af96a7ddfcb2f6059092c250e18f2a
+loc=0.25
+# encoder="rakeness"
+algorithm="TSOC"
+orthogonal=False
 
-# if [ "$orthogonal" = "True" ]; then
-#     orthogonal_flag="--orthogonal"
-# else
-#     orthogonal_flag=""
-# fi
+if [ "$orthogonal" = "True" ]; then
+    orthogonal_flag="--orthogonal"
+else
+    orthogonal_flag=""
+fi
 
-# python ./experiments/generate_ecg.py \
-#     --size $N_train \
-#     --length $n \
-#     --sample-freq $fs \
-#     --heart-rate ${heart_rate[0]} ${heart_rate[1]} \
-#     --isnr $isnr \
-#     --seed $ecg_seed \
-#     --processes $processes \
-#     -vv
+python ./experiments/generate_ecg.py \
+    --size $N_train \
+    --length $n \
+    --sample-freq $fs \
+    --heart-rate ${heart_rate[0]} ${heart_rate[1]} \
+    --isnr $isnr \
+    --seed $ecg_seed \
+    --processes $processes \
+    -vv
 
-# for encoder in "standard" "rakeness" 
-# do
-#     for m in "${m_list[@]}"
-#     do
-#         python ./experiments/compute_supports.py \
-#             --size $N_train \
-#             --isnr $isnr \
-#             --algorithm $algorithm \
-#             --encoder $encoder \
-#             --measurements $m \
-#             --correlation $corr \
-#             --localization $loc \
-#             --ecg_seed $ecg_seed\
-#             --seed $seed \
-#             $orthogonal_flag \
-#             --processes $processes\
-#             -vv
-#     done
-# done
+for encoder in "standard" "rakeness" 
+do
+    for m in "${m_list[@]}"
+    do
+        python ./experiments/compute_supports.py \
+            --size $N_train \
+            --isnr $isnr \
+            --algorithm $algorithm \
+            --encoder $encoder \
+            --measurements $m \
+            --correlation $corr \
+            --localization $loc \
+            --ecg_seed $ecg_seed\
+            --seed $seed \
+            $orthogonal_flag \
+            --processes $processes\
+            -vv
+    done
+done
 # ###############################################################################
 # TSOC Training for Multiple Configurations                                     #
 # ###############################################################################
@@ -314,71 +314,71 @@
 # Standard detectors training                                                 #
 ###############################################################################
 
-# Configuration Section
-n=128               # Number of samples per signal
-m=32                # Number of measurements
-seed_detector=0     # Random seed associated to the detector
-isnr=35             # Signal-to-noise ratio (SNR)
-mode="standard"     # Sensing matrix mode, change to 'rakeness' if needed
-N_train=2000000     # Number of training instances
-train_fraction=0.9  # Fraction of data used for training
-basis="sym6"        # Wavelet basis function
-fs=256              # Sampling frequency
-heart_rate="60 100" # Heart rate range
-orthogonal=True     # Whether to use orthogonalized measurement matrix
-source='random'     # Sensing matrix source: 'best' or 'random'
-index=0             # Index or seed for the sensing matrix
+# # Configuration Section
+# n=128               # Number of samples per signal
+# m=32                # Number of measurements
+# seed_detector=0     # Random seed associated to the detector
+# isnr=35             # Signal-to-noise ratio (SNR)
+# mode="standard"     # Sensing matrix mode, change to 'rakeness' if needed
+# N_train=2000000     # Number of training instances
+# train_fraction=0.9  # Fraction of data used for training
+# basis="sym6"        # Wavelet basis function
+# fs=256              # Sampling frequency
+# heart_rate="60 100" # Heart rate range
+# orthogonal=True     # Whether to use orthogonalized measurement matrix
+# source='random'     # Sensing matrix source: 'best' or 'random'
+# index=0             # Index or seed for the sensing matrix
 
-detector_type="AR" # Detector type to evaluate (e.g., SPE, OCSVM, LOF)
+# detector_type="AR" # Detector type to evaluate (e.g., SPE, OCSVM, LOF)
 
-# Detector-specific configuration
-k=5                 # Parameter k for SPE, T2, or related detectors
-order=1             # Order parameter for AR detector
-kernel="rbf"        # Kernel type for OCSVM (e.g., linear, rbf, poly)
-nu=0.5              # Anomaly fraction for OCSVM
-neighbors=10        # Number of neighbors for LOF detector
-estimators=100      # Number of estimators for IF detector
+# # Detector-specific configuration
+# k=5                 # Parameter k for SPE, T2, or related detectors
+# order=1             # Order parameter for AR detector
+# kernel="rbf"        # Kernel type for OCSVM (e.g., linear, rbf, poly)
+# nu=0.5              # Anomaly fraction for OCSVM
+# neighbors=10        # Number of neighbors for LOF detector
+# estimators=100      # Number of estimators for IF detector
 
-ks=(16 32 48 64 80 96 112)
-orders=(1 2 4 8 16 32)
+# ks=(1 2 4 8 16 24)
+# orders=(1 2 4 8 16 24)
 
-if [ "$orthogonal" = "True" ]; then
-    orthogonal_flag="--orthogonal"
-else
-    orthogonal_flag=""
-fi
+# if [ "$orthogonal" = "True" ]; then
+#     orthogonal_flag="--orthogonal"
+# else
+#     orthogonal_flag=""
+# fi
 
-# for detector_type in "SPE" "T2" 
+# # for detector_type in "SPE" "T2" 
+# # do
+# #     for k in "${ks[@]}"
+# # for detector_type in "AR"
+# # do
+# for order in "${orders[@]}"
 # do
-#     for k in "${ks[@]}"
-# for detector_type in "AR"
-# do
-for order in "${orders[@]}"
-do
-    # Run the evaluation script with the selected configuration
-    python train_detector.py \
-        --n $n \
-        --m $m \
-        --seed_detector $seed_detector \
-        --mode $mode \
-        --isnr $isnr \
-        --detector_type $detector_type \
-        --N_train $N_train \
-        --train_fraction $train_fraction \
-        --basis $basis \
-        --fs $fs \
-        --heart_rate $heart_rate \
-        $orthogonal_flag \
-        --source $source \
-        --index $index \
-        --k $k \
-        --order $order \
-        --kernel $kernel \
-        --nu $nu \
-        --neighbors $neighbors \
-        --estimators $estimators
-done
+#     # Run the evaluation script with the selected configuration
+#     python train_detector.py \
+#         --n $n \
+#         --m $m \
+#         --seed_detector $seed_detector \
+#         --mode $mode \
+#         --isnr $isnr \
+#         --detector_type $detector_type \
+#         --N_train $N_train \
+#         --train_fraction $train_fraction \
+#         --basis $basis \
+#         --fs $fs \
+#         --heart_rate $heart_rate \
+#         $orthogonal_flag \
+#         --source $source \
+#         --index $index \
+#         --k $k \
+#         --order $order \
+#         --kernel $kernel \
+#         --nu $nu \
+#         --neighbors $neighbors \
+#         --estimators $estimators
 # done
+# # done
 
 
 ################################################################################
@@ -420,7 +420,6 @@ done
 # # Standard detectors-related arguments
 # # Parameter k for SPE, T2:
 # k=5
-# ks=(16 32 48 64 80 96 112)
 # # Order parameter for AR detector:                       
 # order=1
 # # Parameters for OCSVM:                 
@@ -429,7 +428,13 @@ done
 # # Number of neighbors for LOF detector
 # neighbors=10
 # # Number of estimators for IF detector                      
-# estimators=100                     
+# estimators=100
+
+# ks=(1 2 4 8 16 24)
+# orders=(1 2 4 8 16 24)
+
+# detector_type="AR"
+
 
 # if [ "$orthogonal" = "True" ]; then
 #     orthogonal_flag="--orthogonal"
@@ -437,46 +442,43 @@ done
 #     orthogonal_flag=""
 # fi
 
-# for detector_type in "SPE" "T2" 
+# for order in "${orders[@]}"
 # do
-#     for k in "${ks[@]}"
-#     do
-#     # Run the evaluation script with the selected configuration
-#     python detector_evaluation.py \
-#         --n $n \
-#         --m $m \
-#         --seed_ko $seed_ko \
-#         --mode $mode \
-#         --isnr $isnr \
-#         --detector_type $detector_type \
-#         --delta $delta \
-#         --N_train $N_train \
-#         --N_test $N_test \
-#         --train_fraction $train_fraction \
-#         --basis $basis \
-#         --fs $fs \
-#         --heart_rate $heart_rate \
-#         $orthogonal_flag \
-#         --source $source \
-#         --index $index \
-#         --processes $processes \
-#         --gpu $gpu \
-#         --detector_mode $detector_mode \
-#         --factor $factor \
-#         --min_lr $min_lr \
-#         --min_delta $min_delta \
-#         --patience $patience \
-#         --epochs $epochs \
-#         --lr $lr \
-#         --batch_size $batch_size \
-#         --threshold $threshold \
-#         --k $k \
-#         --order $order \
-#         --kernel $kernel \
-#         --nu $nu \
-#         --neighbors $neighbors \
-#         --estimators $estimators
-#     done
+# # Run the evaluation script with the selected configuration
+# python detector_evaluation.py \
+#     --n $n \
+#     --m $m \
+#     --seed_ko $seed_ko \
+#     --mode $mode \
+#     --isnr $isnr \
+#     --detector_type $detector_type \
+#     --delta $delta \
+#     --N_train $N_train \
+#     --N_test $N_test \
+#     --train_fraction $train_fraction \
+#     --basis $basis \
+#     --fs $fs \
+#     --heart_rate $heart_rate \
+#     $orthogonal_flag \
+#     --source $source \
+#     --index $index \
+#     --processes $processes \
+#     --gpu $gpu \
+#     --detector_mode $detector_mode \
+#     --factor $factor \
+#     --min_lr $min_lr \
+#     --min_delta $min_delta \
+#     --patience $patience \
+#     --epochs $epochs \
+#     --lr $lr \
+#     --batch_size $batch_size \
+#     --threshold $threshold \
+#     --k $k \
+#     --order $order \
+#     --kernel $kernel \
+#     --nu $nu \
+#     --neighbors $neighbors \
+#     --estimators $estimators
 # done
 
 
