@@ -78,12 +78,8 @@ def training(
             corr_path = os.path.join(dataset_dir, 'correlation', corr_name)
             with open(corr_path, 'rb') as f:
                 C = pickle.load(f)
-            supports_name = f'supports_method={support_method}_mode={mode}_m={m}'\
-                f'_corr={corr_name}_loc={.25}_orth={orthogonal}_seed={seed_support}.pkl'
         else:
             C = None
-            supports_name = f'supports_method={support_method}_mode={mode}_m={m}'\
-                f'_orth={orthogonal}_seed={seed_support}.pkl'
         A = generate_sensing_matrix((m, n), mode=mode, orthogonal=orthogonal, correlation=C, loc=.25, seed=index)
     elif source == 'best':
         # Load the best sensing matrix
@@ -101,6 +97,13 @@ def training(
     Y = cs.encode(X)  # measurements
 
     # ------------------ Labels (support) ------------------
+    if mode == 'rakeness':
+        supports_name = f'supports_method={support_method}_mode={mode}_m={m}'\
+            f'_corr={corr_name}_loc={.25}_orth={orthogonal}_seed={seed_support}.pkl'
+    else:
+        supports_name = f'supports_method={support_method}_mode={mode}_m={m}'\
+                f'_orth={orthogonal}_seed={seed_support}.pkl'
+
     data_path = os.path.join(dataset_dir, data_name, supports_name)
     with open(data_path, 'rb') as f:
         Z = pickle.load(f)
