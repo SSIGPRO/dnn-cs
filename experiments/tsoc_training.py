@@ -132,9 +132,9 @@ def training(
                 f'_mind={min_delta}_seeddata={seed_data}_seedtrain={seed_training}'\
                 f'_seedselect={seed_selection}_seedsup={seed_support}'        
     if mode == 'rakeness':
-        model_name = f'_{model_name}_corr={corr_name}'
+        model_name = f'{model_name}_corr={corr_name}'
     if source == 'best':
-        model_name = f'_{model_name}_seeddatamat={seed_data_matrix}_M={M}'
+        model_name = f'{model_name}_seeddatamat={seed_data_matrix}_M={M}'
     model_path = os.path.join(model_folder, f'{model_name}.pth')
 
     # ------------------ Trining loop ------------------
