@@ -36,8 +36,8 @@ def test(
     seed_test_data = 66
     seed_support = 0
     seed_data_matrix = 0
-    seed_matrix = 0
-    M = 10_000
+    seed_selection = 0
+    M = 1_000
 
     # ------------------ Folders ------------------
     results_folder = '/srv/newpenny/dnn-cs/tsoc/results/TSOC/reconstruction'
@@ -60,6 +60,7 @@ def test(
         X = pickle.load(f)
 
     # ------------------ Compressed Sensing ------------------
+    # ------------------ Compressed Sensing ------------------
     D = wavelet_basis(n, basis, level=2)
 
     # Sensing matrix
@@ -72,7 +73,6 @@ def test(
             supports_name = f'supports_method={support_method}_mode={mode}_m={m}'\
                 f'_corr={corr_name}_loc={.25}_orth={orthogonal}_seed={seed_support}.pkl'
         else:
-            corr_name = 'None'
             C = None
             supports_name = f'supports_method={support_method}_mode={mode}_m={m}'\
                 f'_orth={orthogonal}_seed={seed_support}.pkl'
@@ -81,11 +81,13 @@ def test(
         # Load the best sensing matrix
 
         A_folder = f'ecg_N=10000_n={n}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}_isnr={isnr}_seed={seed_data_matrix}'
-        A_name = f'sensing_matrix_M={M}_m={m}_mode={mode}_seed={seed_matrix}'
-        data_path = os.path.join(dataset_dir, A_folder, 'A_Filippo')
-        with open(os.path.join(data_path, A_name), 'rb') as f:
+        A_name = f'sensing_matrix_M={M}_m={m}_mode={mode}_seed={seed_selection}'
+        if mode == 'rakeness':
+            A_name = f'{A_name}_loc={.25}_corr={corr_name}'
+        data_path = os.path.join(dataset_dir, A_folder, 'A_Filippo', f'{A_name}.pkl')
+        with open(data_path, 'rb') as f:
             A_dict = pickle.load(f)
-        A = A_dict[index]
+        A = A_dict[index]['matrix']
 
     cs = CompressedSensing(A, D)
     Y = cs.encode(X)  # measurements
@@ -103,13 +105,16 @@ def test(
     tsoc = TSOC(n, m)
     tsoc.to(device) # move the network to GPU
     print(tsoc)
-    model_name = f'TSOC-N={N_train}_n={n}_m={m}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}'\
-                f'_isnr={isnr}_mode={mode}_ort={orthogonal}_epochs={epochs}_bs={batch_size}_opt=sgd_lr={lr}'\
+    model_name = f'TSOC-N={N}_n={n}_m={m}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}'\
+                f'_isnr={isnr}_mode={mode}_src={source}_ort={orthogonal}_seedmat={index}_epochs={epochs}_bs={batch_size}_opt=sgd_lr={lr}'\
                 f'_th={threshold}_tf={train_fraction}_minlr={min_lr}_p={patience}'\
-                f'_mind={min_delta}_seed_data={seed_train_data}_seed_training={seed_training}'\
-                f'_corr={corr_name}_seed_support={seed_support}_seed_data_matrix={seed_data_matrix}'\
-                f'_seed_matrix={seed_matrix}_M={M}'
-    model_path = os.path.join(model_folder, model_name+'.pth')
+                f'_mind={min_delta}_seeddata={seed_train_data}_seedtrain={seed_training}'\
+                f'_seedselect={seed_selection}_seedsup={seed_support}'        
+    if mode == 'rakeness':
+        model_name = f'_{model_name}_corr={corr_name}'
+    if source == 'best':
+        model_name = f'_{model_name}_seeddatamat={seed_data_matrix}_M={M}'
+    model_path = os.path.join(model_folder, f'{model_name}.pth')
     tsoc.load_state_dict(torch.load(model_path, weights_only=True))
     tsoc.eval()     # Set the model to evaluation mode
     
