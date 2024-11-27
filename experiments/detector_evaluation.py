@@ -24,50 +24,56 @@ from wombats.detectors.ml_based import *
 root = os.path.dirname(os.path.dirname(os.path.realpath('__file__')))
 sys.path.insert(0, os.path.join(root, 'src'))
 
-from dataset.synthetic_ecg import generate_ecg
+from dataset import dataset_dir
 from cs.wavelet_basis import wavelet_basis
 from cs import CompressedSensing, generate_sensing_matrix
 from detectors.tsoc import TSOCDetector
 from detectors import detectors_dir
+from models import models_dir
 
 
 logging.basicConfig(level=logging.DEBUG)
 
 def test(
     n, m, epochs, lr, batch_size, N_train, basis, fs, heart_rate, isnr, mode, 
-    orthogonal, source, index, seed, processes, threshold, gpu, train_fraction, factor, min_lr, 
+    orthogonal, source, index, seed_ko, processes, threshold, gpu, train_fraction, factor, min_lr, 
     min_delta, patience, detector_type, delta, N_test, detector_mode, 
     k, order, kernel, nu, neighbors, estimators
 ):
+    # ------------------ Constants ------------------
+    corr_name = '96af96a7ddfcb2f6059092c250e18f2a.pkl'
+    seed_train_data = 11
+    seed_test_data = 66
+    seed_training = 0 # seed for training data split
+    seed_support = 0
+    seed_data_matrix = 0
+    seed_selection = 0
+    seed_detector = 0
+    M = 1_000
+
+    # ------------------ Folders ------------------
+    model_folder = f'{models_dir}TSOC'
+    results_folder = '/srv/newpenny/dnn-cs/tsoc/results/TSOC/detection'
+
     # ------------------ Show parameter values ------------------
     params = locals()
     params_str = ", ".join(f"{key}={value}" for key, value in params.items())
-    logging.info(f"Running test with parameters: {params_str}")
+    logging.info(f"Training {detector_type} detector with parameters: {params_str}")
 
-    # ------------------ Folders ------------------
-    data_folder = '/srv/newpenny/dnn-cs/JETCAS2020/data/'
-    results_folder = '/srv/newpenny/dnn-cs/tsoc/results/TSOC/detection'
-
+    
     # ------------------ Seeds ------------------
-    np.random.seed(seed)
-
-    # Set the seed for PyTorch (CPU)
-    torch.manual_seed(seed)
-
-    # Set the seed for PyTorch (GPU)
-    torch.cuda.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)  # For multi-GPU setups
+    np.random.seed(seed_ko)
 
     # ------------------ GPU ------------------
     device = torch.device(f'cuda:{gpu}' if torch.cuda.is_available() else 'cpu')
 
-
     # ------------------ Signal ------------------
     # load test data
-    data_path = os.path.join(data_folder, f'n{n}_ISNR', f'tsSet_n={n}_isnr={isnr}_no-sparse.h5')
-    with pd.HDFStore(data_path, mode='r') as store:
-        X = store.select('X').values.squeeze()
-    X = X[:N_test]
+    data_name = f'ecg_N={N_test}_n={n}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}'\
+                f'_isnr={isnr}_seed={seed_test_data}'
+    data_path = os.path.join(dataset_dir, data_name+'.pkl')
+    with open(data_path, 'rb') as f:
+        X = pickle.load(f)
     
     # standarize the data
     std, mean = X.std(), X.mean()
@@ -75,11 +81,11 @@ def test(
 
     # ------------------ Compressed Sensing ------------------
     D = wavelet_basis(n, basis, level=2)
+
     # Sensing matrix
     if source == 'random':
         # Generate a random sensing matrix
         if mode == 'rakeness':
-            corr_name = '96af96a7ddfcb2f6059092c250e18f2a.pkl'
             corr_path = os.path.join(dataset_dir, 'correlation', corr_name)
             with open(corr_path, 'rb') as f:
                 C = pickle.load(f)
@@ -88,12 +94,16 @@ def test(
         A = generate_sensing_matrix((m, n), mode=mode, orthogonal=orthogonal, correlation=C, loc=.25, seed=index)
     elif source == 'best':
         # Load the best sensing matrix
-        A_folder = f'ecg_N=10000_n={n}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}_isnr={isnr}_seed={seed}'
-        A_name = f'A_N=1000_n={n}_m={m}_mode={mode}_seed={seed}.pkl'
-        data_path = os.path.join(dataset_dir, A_folder, 'A_Filippo')
-        with open(os.path.join(data_path, A_name), 'rb') as f:
+
+        A_folder = f'ecg_N=10000_n={n}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}_isnr={isnr}_seed={seed_data_matrix}'
+        A_name = f'sensing_matrix_M={M}_m={m}_mode={mode}_seed={seed_selection}'
+        if mode == 'rakeness':
+            A_name = f'{A_name}_loc={.25}_corr={corr_name}'
+        data_path = os.path.join(dataset_dir, A_folder, 'A_Filippo', f'{A_name}.pkl')
+        with open(data_path, 'rb') as f:
             A_dict = pickle.load(f)
-        A = A_dict[index]
+        A = A_dict[index]['matrix']
+
     cs = CompressedSensing(A, D)
     Y = cs.encode(X)  # measurements
 
@@ -136,7 +146,8 @@ def test(
     # initialize the dataframe for anomalous data
     Xko_df = pd.DataFrame(
         index=np.arange(N_test),
-        columns=pd.MultiIndex.from_product([anomalies_labels, np.arange(n)])
+        columns=pd.MultiIndex.from_product([anomalies_labels, np.arange(n)]),
+        dtype=np.float64
     )
 
     Yko_df = pd.DataFrame(
@@ -173,11 +184,17 @@ def test(
 
     # evaluate TSOC-based detector
     if 'TSOC' in detector_type:
-        file_model = f'TSOC-N={N_train}_n={n}_m={m}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}'\
-                f'_isnr={isnr}_mode={mode}_ort={orthogonal}_epochs={epochs}_bs={batch_size}_opt=sgd_lr={lr}'\
+        model_name = f'TSOC-N={N}_n={n}_m={m}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}'\
+                f'_isnr={isnr}_mode={mode}_src={source}_ort={orthogonal}_seedmat={index}_epochs={epochs}_bs={batch_size}_opt=sgd_lr={lr}'\
                 f'_th={threshold}_tf={train_fraction}_minlr={min_lr}_p={patience}'\
-                f'_mind={min_delta}_seed={seed}.pth'
-        detector = TSOCDetector(n, m, file_model, seed, mode=detector_mode, gpu=device)
+                f'_mind={min_delta}_seeddata={seed_train_data}_seedtrain={seed_training}'\
+                f'_seedselect={seed_selection}_seedsup={seed_support}'        
+        if mode == 'rakeness':
+            model_name = f'_{model_name}_corr={corr_name}'
+        if source == 'best':
+            model_name = f'_{model_name}_seeddatamat={seed_data_matrix}_M={M}'
+        model_path = os.path.join(model_folder, f'{model_name}.pth')
+        detector = TSOCDetector(n, m, model_path, seed, mode=detector_mode, gpu=device)
         detector = detector.fit()
 
     # evaluate a standard detector
@@ -185,22 +202,22 @@ def test(
     elif detector_type in standard_detectors:
         if detector_type == 'SPE':
             detector = SPE(k)
-            detector_label = f'SPE_{k}'
+            detector_label = f'SPE_k={k}'
         elif detector_type == 'T2':
             detector = T2(k)
-            detector_label = f'T2_{k}'
+            detector_label = f'T2_k={k}'
         elif detector_type == 'AR':
             detector = AR(order)
-            detector_label = f'AR_{order}'
+            detector_label = f'AR_order={order}'
         elif detector_type == 'OCSVM':
             detector = OCSVM(kernel, nu)
-            detector_label = f'OCSVM_{kernel}_{nu}'
+            detector_label = f'OCSVM_kernel={kernel}_nu={nu}'
         elif detector_type == 'LOF':
-            detector = LOF(h)
-            detector_label = f'LOF_{neighbors}'
+            detector = LOF(neighbors)
+            detector_label = f'LOF_neighbors={neighbors}'
         elif detector_type == 'IF':
-            detector = IF(l)
-            detector_label = f'IF_{estimators}'
+            detector = IF(estimators)
+            detector_label = f'IF_estimators={estimators}'
         elif detector_type == 'MD':
             detector = MD()
             detector_label = detector_type
@@ -218,36 +235,23 @@ def test(
             detector_label = detector_type
             
 
-        # fit the detector
+        # load the detector
         model_name = f'{detector_label}_N={N_train}_n={n}_m={m}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}'\
-        f'_isnr={isnr}_seed={seed}.pkl'
-        model_path = os.path.join(detectors_dir, model_name)
-        # load if already trained
+                f'_isnr={isnr}_mode={mode}_src={source}_ort={orthogonal}_seedmat={index}_tf={train_fraction}_seeddet={seed_detector}'\
+                f'_seeddata={seed_train_data}_seedtrain={seed_training}_seedselect={seed_selection}'
+        if mode == 'rakeness':
+            model_name = f'_{model_name}_corr={corr_name}'
+        if source == 'best':
+            model_name = f'_{model_name}_seeddatamat={seed_data_matrix}_M={M}'
+        model_path = os.path.join(detectors_dir, f'{model_name}.pkl')
+        
         if os.path.exists(model_path):
-            
             with open(model_path, 'rb') as f:
                 detector = pickle.load(f)
-        # fit
         else:
-            data_path = os.path.join(data_folder, f'n{n}_ISNR', f'trSet_n={n}_isnr={isnr}_no-sparse.h5')
-            with pd.HDFStore(data_path, mode='r') as store:
-                X_train = store.select('X').values.squeeze()
-            Y_train = cs.encode(X_train)
+            print(f'detector {detector_label} has not been trained')
+            sys.exit(0)
 
-            train_size = int(train_fraction * len(Y_train))  # 80% for training
-            val_size = len(Y_train) - train_size  # 20% for validation
-
-            # Split the dataset into training and validation
-            generator = torch.Generator()
-            generator.manual_seed(seed)
-            train_dataset, val_dataset = random_split(Y_train, [train_size, val_size], generator=generator)
-            Y_train, Y_val = train_dataset.dataset, val_dataset.dataset
-            detector = detector.fit(Y_train)
-
-            # save
-            with open(model_path,'wb') as f:
-                pickle.dump(detector, f)
-        
     # ------------------ Evaluate the detector for each anomaly ------------------
     for anomaly_label in tqdm.tqdm(anomalies_labels):
         # define the anomalous dataset
@@ -260,8 +264,7 @@ def test(
         metric_value = detector.test(Zanom, metric='AUC')
         result.loc[anomaly_label] = metric_value
 
-    results_path = os.path.join(results_folder, f'AUC-{detector_label}_N={N_train}_n={n}_m={m}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}'\
-        f'_isnr={isnr}_seed={seed}.pkl')
+    results_path = os.path.join(results_folder, f'AUC_detector={model_name}_delta={delta}_seedko={seed_ko}.pkl')
     pd.to_pickle(result, results_path)
 
 # ------------------ Parser definition ------------------
@@ -271,18 +274,18 @@ def parse_args():
     # Core arguments
     parser.add_argument('-n', '--n', type=int, required=True, help="Number of samples per signal")
     parser.add_argument('-m', '--m', type=int, required=True, help="Number of measurements")
-    parser.add_argument('-s', '--seed', type=int, required=True, help="Random seed for reproducibility")
+    parser.add_argument('-s', '--seed_ko', type=int, required=True, help="Random seed for reproducibility")
     parser.add_argument('-md', '--mode', type=str, choices=['standard', 'rakeness'], required=True, help="Sensing matrix mode: 'standard' or 'rakeness'")
     parser.add_argument('-idx', '--index', type=int, required=True, help="Seed for random or index for (one of) the best sensing matrix")
     parser.add_argument('-i', '--isnr', type=int, required=True, help="Signal-to-noise ratio (SNR) in dB")
     parser.add_argument('-dt', '--detector_type', type=str, required=True, help="Type of detector to evaluate (e.g., TSOC, SPE, OCSVM, LOF)")
     parser.add_argument('-dlt', '--delta', type=float, required=True, help="Anomaly intensity parameter")
-    parser.add_argument('-N', '--N_train', type=int, default=2_000_000, help="Number of training samples")
+    parser.add_argument('-N', '--N_train', type=int, default=2000000, help="Number of training samples")
     parser.add_argument('-tf', '--train_fraction', type=float, default=0.9, help="Fraction of data used for training")
-    parser.add_argument('-M', '--N_test', type=int, default=10_000, help="Number of test samples")
+    parser.add_argument('-M', '--N_test', type=int, default=10000, help="Number of test samples")
     parser.add_argument('-B', '--basis', type=str, default='sym6', help="Wavelet basis function")
     parser.add_argument('-f', '--fs', type=int, default=256, help="Sampling frequency")
-    parser.add_argument('-hr', '--heart_rate', type=str, default='60,100', help="Heart rate range (comma-separated, e.g., 60,100)")
+    parser.add_argument('--heart_rate', '-hr', type=int, nargs=2, default=(60, 100), help="Heart rate range")
     parser.add_argument('-o', '--orthogonal', action='store_true', help="Use orthogonalized measurement matrix (default: False)")
     parser.add_argument('--source', '-src', type=str, choices=['best', 'random'], default='best', help="Sensing matrix type: genereated randomly or leading to best performance")
     parser.add_argument('-p', '--processes', type=int, default=48, help="Number of CPU processes")
@@ -329,7 +332,7 @@ if __name__ == "__main__":
         orthogonal=args.orthogonal,
         source=args.source,
         index=args.index,
-        seed=args.seed,
+        seed_ko=args.seed_ko,
         processes=args.processes,
         threshold=args.threshold,
         gpu=args.gpu,

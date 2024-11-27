@@ -38,7 +38,7 @@ def training(
     seed_data = 11 # seed relative to training data
     seed_support = 0 # seed used to generate the supports
     seed_data_matrix = 0 # seed used to generate data for sensing matrix selection
-    seed_matrix = 0 # seed used to select the best sensing matrix on data geneerated with seed_data_matrix
+    seed_selection = 0 # seed used to select the best sensing matrix on data geneerated with seed_data_matrix
     M = 1_000 # number of evaluated sensing matrices
 
     # ------------------ Folders ------------------
@@ -89,13 +89,13 @@ def training(
         # Load the best sensing matrix
 
         A_folder = f'ecg_N=10000_n={n}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}_isnr={isnr}_seed={seed_data_matrix}'
-        A_name = f'sensing_matrix_M={M}_m={m}_mode={mode}_seed={seed_matrix}'
+        A_name = f'sensing_matrix_M={M}_m={m}_mode={mode}_seed={seed_selection}'
         if mode == 'rakeness':
             A_name = f'{A_name}_loc={.25}_corr={corr_name}'
-        data_path = os.path.join(dataset_dir, A_folder, 'A_Filippo', f'{A_name}+.pkl')
+        data_path = os.path.join(dataset_dir, A_folder, 'A_Filippo', f'{A_name}.pkl')
         with open(data_path, 'rb') as f:
             A_dict = pickle.load(f)
-        A = A_dict[index]
+        A = A_dict[index]['matrix']
 
     cs = CompressedSensing(A, D)
     Y = cs.encode(X)  # measurements
@@ -124,14 +124,14 @@ def training(
     tsoc = TSOC(n, m)
     tsoc.to(device) # move the network to GPU
     model_name = f'TSOC-N={N}_n={n}_m={m}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}'\
-                f'_isnr={isnr}_mode={mode}_ort={orthogonal}_epochs={epochs}_bs={batch_size}_opt=sgd_lr={lr}'\
+                f'_isnr={isnr}_mode={mode}_src={source}_ort={orthogonal}_seedmat={index}_epochs={epochs}_bs={batch_size}_opt=sgd_lr={lr}'\
                 f'_th={threshold}_tf={train_fraction}_minlr={min_lr}_p={patience}'\
-                f'_mind={min_delta}_seed_data={seed_data}_seed_training={seed_training}'\
-                f'_seed_matrix={seed_matrix}_seed_support={seed_support}'        
+                f'_mind={min_delta}_seeddata={seed_data}_seedtrain={seed_training}'\
+                f'_seedselect={seed_selection}_seedsup={seed_support}'        
     if mode == 'rakeness':
-        model_name = f'{model_name}_corr={corr_name}'
+        model_name = f'_{model_name}_corr={corr_name}'
     if source == 'best':
-        f'{model_name}_seed_data_matrix={seed_data_matrix}_M={M}'
+        model_name = f'_{model_name}_seeddatamat={seed_data_matrix}_M={M}'
     model_path = os.path.join(model_folder, f'{model_name}.pth')
 
     # ------------------ Trining loop ------------------
