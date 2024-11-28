@@ -65,24 +65,24 @@ def accuracy(output, z_true, th=0.5, reduce=True):
 
 def rsnr(x_pred, x_true, reduce=False):
     ''' Compute Reconstruction Signal-to-Noise Ratio '''
-    norm_signal = torch.norm(x_true, axis=-1)
-    norm_noise = torch.norm(x_true - x_pred, axis=-1)
+    norm_signal = torch.norm(x_true, dim=-1)
+    norm_noise = torch.norm(x_true - x_pred, dim=-1)
     rsnr = 20 * torch.log10(norm_signal / norm_noise)
     if reduce:
         rsnr = torch.mean(rsnr)
     return rsnr
 
 def compute_rsnr(cs):
-    def metric(output, x_true, th=0.5):
+    def metric(output, x_true, th=0.5, reduce=True):
         y_true = cs.encode(x_true.cpu().numpy())  # Convert to NumPy
-        z_pred = (output > th).float().cpu().numpy()  # Convert to NumPy
+        z_pred = (output > th).cpu().numpy().astype(bool) # Convert to NumPy
 
         # signal reconstruction
         x_pred = torch.empty_like(x_true)  # Create a tensor with the same shape as x_true
         for i in range(output.size(0)):  # Iterate over batch size
             x_pred[i] = torch.tensor(cs.decode_with_support(y_true[i], z_pred[i]))  # Convert back to PyTorch tensor
         
-        return rsnr(x_true, x_pred)
+        return rsnr(x_true, x_pred, reduce)
     return metric
 
 def compute_metrics(output, z_true, th=0.5):
