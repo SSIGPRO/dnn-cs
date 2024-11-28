@@ -18,7 +18,8 @@ sys.path.insert(0, os.path.join(root, 'src'))
 from models import models_dir
 from dataset import dataset_dir
 from cs.wavelet_basis import wavelet_basis
-from cs.training_metrics import compute_metrics, update_metrics, compute_rsnr
+from cs.training_metrics import compute_metrics, update_metrics
+from cs.training_metrics import compute_rsnr
 from cs.loss import multiclass_loss_alpha
 from models.tsoc import TSOC
 from cs import CompressedSensing, generate_sensing_matrix
@@ -111,7 +112,9 @@ def training(
         Z = pickle.load(f)
 
     # ------------------ Data loaders ------------------
-    dataset = TensorDataset(torch.from_numpy(Y).float(), torch.from_numpy(Z).float())  # Create a dataset from the tensors
+    dataset = TensorDataset(torch.from_numpy(X).float(),
+                            torch.from_numpy(Y).float(),
+                            torch.from_numpy(Z).float())  # Create a dataset from the tensors
     # Split sizes for training and validation
     train_size = int(train_fraction * len(dataset))  # 90% for training
     val_size = len(dataset) - train_size  # 10% for validation
@@ -156,14 +159,15 @@ def training(
             # train loop
             tsoc.train()     # Set the model to training mode
             train_loss = 0.0
-            train_metrics = {'P': 0.0, 'TP': 0.0, 'TPR': 0.0, 'TNR': 0.0, 'ACC': 0.0, 'RSNR': 0.0}
-            for batch_idx, (Y_batch, Z_batch) in enumerate(train_loader):
-                Y_batch, Z_batch = Y_batch.to(device), Z_batch.to(device)     # move training data to GPU
+            train_metrics = {'P': 0.0, 'TP': 0.0, 'TPR': 0.0, 'TNR': 0.0, 'ACC': 0.0}
+            for batch_idx, (X_batch, Y_batch, Z_batch) in enumerate(train_loader):
+                X_batch, Y_batch, Z_batch = X_batch.to(device), Y_batch.to(device), Z_batch.to(device)     # move training data to GPU
                 output = tsoc(Y_batch)
                 loss = multiclass_loss_alpha(output, Z_batch)
 
                 train_metrics_batch = compute_metrics(output, Z_batch, th=threshold)
-                train_metrics_batch{'RSNR'} = rsnr(output, Z_batch, th=threshold)
+                if batch_idx == 0:
+                    train_rsnr_batch = rsnr(output, X_batch, th=threshold).item()
                 optimizer.zero_grad()     # zeroes the gradient buffers of all parameters
                 loss.backward()     # Backpropagate
                 optimizer.step()     # Update weights
@@ -177,18 +181,20 @@ def training(
             num_batches = len(train_loader)
             train_loss = train_loss/num_batches
             train_metrics = {key: value / num_batches for key, value in train_metrics.items()}
+            train_metrics['RSNR'] = train_rsnr_batch
 
             # validation loop
             tsoc.eval()     # Set the model to evaluation mode
             val_loss = 0.0
-            val_metrics = {'P': 0.0, 'TP': 0.0, 'TPR': 0.0, 'TNR': 0.0, 'ACC': 0.0, 'RSNR': 0.0}
+            val_metrics = {'P': 0.0, 'TP': 0.0, 'TPR': 0.0, 'TNR': 0.0, 'ACC': 0.0}
             with torch.no_grad():     # disables gradient calculation for the validation phase 
-                for batch_idx, (Y_batch, Z_batch) in enumerate(val_loader):
-                    Y_batch, Z_batch = Y_batch.to(device), Z_batch.to(device)     # move validation data to GPU
+                for batch_idx, (X_batch, Y_batch, Z_batch) in enumerate(val_loader):
+                    X_batch, Y_batch, Z_batch = X_batch.to(device), Y_batch.to(device), Z_batch.to(device)  # move validation data to GPU
                     output = tsoc(Y_batch)
                     val_loss += multiclass_loss_alpha(output, Z_batch).item()
                     val_metrics_batch = compute_metrics(output, Z_batch, th=threshold)
-                    val_metrics_batch{'RSNR'} = rsnr(output, Z_batch, th=threshold)
+                    if batch_idx == 0:
+                        val_rsnr_batch = rsnr(output, X_batch, th=threshold).item()
                     val_metrics = update_metrics(val_metrics, val_metrics_batch)
 
             num_batches = len(val_loader)
@@ -206,6 +212,7 @@ def training(
                 print("Early stopping")
                 break
             val_metrics = {key: value / num_batches for key, value in val_metrics.items()}
+            val_metrics['RSNR'] = val_rsnr_batch
 
             print(f"Epoch [{epoch+1}/{epochs}], LR={scheduler.get_last_lr()[0]}\nTRAIN Loss: {np.round(train_loss, 3)}  " +\
                 "  ".join([f'{key}: {np.round(value, 3)}' for key, value in train_metrics.items()])  +\
