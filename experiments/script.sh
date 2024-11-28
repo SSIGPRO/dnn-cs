@@ -150,129 +150,145 @@
 # ECG Training Data Generation                                                 #
 ################################################################################
 
-# Parameters of the training data
-N_train=2000000 # Number of ECG training examples
-n=128           # Length of each ECG signal
-fs=256          # Sampling frequency
-heart_rate=(60 100) # Heart rate range
-isnr=35         # Intrinsic signal-to-noise ratio
-ecg_seed=11     # Random seed for data generation
-processes=4     # Number of parallel processes
+# # Parameters of the training data
+# N_train=2000000 # Number of ECG training examples
+# n=128           # Length of each ECG signal
+# fs=256          # Sampling frequency
+# heart_rate=(60 100) # Heart rate range
+# isnr=35         # Intrinsic signal-to-noise ratio
+# ecg_seed=11     # Random seed for data generation
+# processes=4     # Number of parallel processes
 
-# Parameters of the support of the training data
-# m=48
-# m_list=(16 32 48 64)
-m_list=(48)
-corr=96af96a7ddfcb2f6059092c250e18f2a
-loc=0.25
-# encoder="rakeness"
-source='best'    # Whether to use best or random sensing matrix
-seed=0           # "Random" seed for sensing matrix generation or index of the "best" sensing matrix according to "source"
-seed_list=(0 1 2 3 4 5 6 7)
-algorithm="TSOC"
-orthogonal=False
+# # Parameters of the support of the training data
+# # m=48
+# # m_list=(16 32 48 64)
+# m_list=(48)
+# corr=96af96a7ddfcb2f6059092c250e18f2a
+# loc=0.25
+# # encoder="rakeness"
+# source='best'    # Whether to use best or random sensing matrix
+# # seed=0           # "Random" seed for sensing matrix generation or index of the "best" sensing matrix according to "source"
+# seed_list=(0 1 2 3 4 5 6 7)
+# algorithm="TSOC"
+# orthogonal=True
 
-if [ "$orthogonal" = "True" ]; then
-    orthogonal_flag="--orthogonal"
-else
-    orthogonal_flag=""
-fi
+# if [ "$orthogonal" = "True" ]; then
+#     orthogonal_flag="--orthogonal"
+# else
+#     orthogonal_flag=""
+# fi
 
-python ./experiments/generate_ecg.py \
-    --size $N_train \
-    --length $n \
-    --sample-freq $fs \
-    --heart-rate ${heart_rate[0]} ${heart_rate[1]} \
-    --isnr $isnr \
-    --seed $ecg_seed \
-    --processes $processes \
-    -vv
+# python ./experiments/generate_ecg.py \
+#     --size $N_train \
+#     --length $n \
+#     --sample-freq $fs \
+#     --heart-rate ${heart_rate[0]} ${heart_rate[1]} \
+#     --isnr $isnr \
+#     --seed $ecg_seed \
+#     --processes $processes \
+#     -vv
 
-for encoder in "standard" "rakeness" 
-do
-    for m in "${m_list[@]}"
-    do
-        python ./experiments/compute_supports.py \
-            --size $N_train \
-            --isnr $isnr \
-            --algorithm $algorithm \
-            --encoder $encoder \
-            --source $source \
-            --measurements $m \
-            --correlation $corr \
-            --localization $loc \
-            --ecg_seed $ecg_seed\
-            --seed $seed \
-            $orthogonal_flag \
-            --processes $processes\
-            -vv
-    done
-done
+# for seed in "${seed_list[@]}"
+# do
+#     for encoder in "standard" "rakeness" 
+#     do
+#         for m in "${m_list[@]}"
+#         do
+#             python ./experiments/compute_supports.py \
+#                 --size $N_train \
+#                 --isnr $isnr \
+#                 --algorithm $algorithm \
+#                 --encoder $encoder \
+#                 --source $source \
+#                 --measurements $m \
+#                 --correlation $corr \
+#                 --localization $loc \
+#                 --ecg_seed $ecg_seed\
+#                 --seed $seed \
+#                 $orthogonal_flag \
+#                 --processes $processes\
+#                 -vv
+#         done
+#     done
+# done
 # ###############################################################################
 # TSOC Training for Multiple Configurations                                     #
 # ###############################################################################
 
-# # Configuration Section
-# n=128               # Number of samples per signal
-# m=48                # Number of measurements
-# # m_list=(16 32 48 64)
-# m_list=(48)
-# seed_training=5     # Training-related random seed for reproducibility
-# isnr=35             # Signal-to-noise ratio (SNR)
-# mode="standard"     # Encoder mode, change to 'rakeness' if needed
-# gpu=1               # GPU index
-# train_fraction=0.9  # Fraction of data used for training
-# factor=0.2          # Factor for ReduceLROnPlateau scheduler
-# min_lr=0.001        # Minimum learning rate
-# min_delta=1e-4      # Minimum delta for early stopping and ReduceLROnPlateau
-# patience=40         # Patience for early stopping
-# epochs=500          # Number of training epochs
-# lr=0.1              # Learning rate
-# batch_size=50       # Batch size for training
-# N=2000000           # Number of training instances
-# basis="sym6"        # Wavelet basis function
-# fs=256              # Sampling frequency
-# heart_rate="60 100" # Heart rate range
-# threshold=0.5       # Threshold for metrics
-# orthogonal=True     # Whether to use orthogonalized matrix
-# source='best'       # Whether to use best or random matrix
-# index=0             # Index or seed of the best or random matrix, respectivelly
-# processes=48        # Number of CPU processes for parallelism
+# Configuration Section
+n=128               # Number of samples per signal
+isnr=35             # Signal-to-noise ratio (SNR)
 
-# for m in "${m_list[@]}"
-#     do
-#         if [ "$orthogonal" = "True" ]; then
-#             orthogonal_flag="--orthogonal"
-#         else
-#             orthogonal_flag=""
-#         fi
+m=48                # Number of measurements
+# m_list=(16 32 48 64)
+m_list=(48)
+seed_training=0     # Training-related random seed for reproducibility
+mode="standard"     # Encoder mode, change to 'rakeness' if needed
+gpu=4               # GPU index
 
-#         # Run the training script with the selected configuration
-#         python tsoc_training.py \
-#             --n $n \
-#             --m $m \
-#             --epochs $epochs \
-#             --lr $lr \
-#             --batch_size $batch_size \
-#             --N $N \
-#             --basis $basis \
-#             --fs $fs \
-#             --heart_rate $heart_rate \
-#             --isnr $isnr \
-#             --mode $mode \
-#             $orthogonal_flag \
-#             --source $source \
-#             --index $index \
-#             --seed_training $seed_training \
-#             --processes $processes \
-#             --threshold $threshold \
-#             --gpu $gpu \
-#             --train_fraction $train_fraction \
-#             --factor $factor \
-#             --min_lr $min_lr \
-#             --min_delta $min_delta \
-#             --patience $patience
-#     done
+optimizer="sgd"    # Optimizer for training
+lr=0.1              # Learning rate
+batch_size=50       # Batch size for training
+min_lr=0.001        # Minimum learning rate
+
+# optimizer="adam"    # Optimizer for training
+# lr=0.001            # Learning rate
+# batch_size=64       # Batch size for training
+# min_lr=0.00001      # Minimum learning rate
+
+orthogonal=False     # Whether to use orthogonalized matrix
+source='random'       # Whether to use best or random matrix
+seed_matrix=0       # Index or seed of the best or random matrix, respectivelly
+
+train_fraction=0.9  # Fraction of data used for training
+factor=0.2          # Factor for ReduceLROnPlateau scheduler
+
+min_delta=1e-4      # Minimum delta for early stopping and ReduceLROnPlateau
+patience=40         # Patience for early stopping
+epochs=1000         # Number of training epochs
+
+N=2000000           # Number of training instances
+basis="sym6"        # Wavelet basis function
+fs=256              # Sampling frequency
+heart_rate="60 100" # Heart rate range
+threshold=0.5       # Threshold for metrics
+processes=48        # Number of CPU processes for parallelism
+
+for m in "${m_list[@]}"
+    do
+        if [ "$orthogonal" = "True" ]; then
+            orthogonal_flag="--orthogonal"
+        else
+            orthogonal_flag=""
+        fi
+
+        # Run the training script with the selected configuration
+        python tsoc_training.py \
+            --n $n \
+            --m $m \
+            --epochs $epochs \
+            --lr $lr \
+            --optimizer $optimizer \
+            --batch_size $batch_size \
+            --N $N \
+            --basis $basis \
+            --fs $fs \
+            --heart_rate $heart_rate \
+            --isnr $isnr \
+            --mode $mode \
+            $orthogonal_flag \
+            --source $source \
+            --seed_matrix $seed_matrix \
+            --seed_training $seed_training \
+            --processes $processes \
+            --threshold $threshold \
+            --gpu $gpu \
+            --train_fraction $train_fraction \
+            --factor $factor \
+            --min_lr $min_lr \
+            --min_delta $min_delta \
+            --patience $patience
+    done
 
 
 

@@ -26,20 +26,20 @@ from cs import CompressedSensing, generate_sensing_matrix
 logging.basicConfig(level=logging.DEBUG)
 
 def training(
-    n, m, epochs, lr, batch_size, N, basis, fs, heart_rate, isnr, mode, 
-    orthogonal, source, index, seed_training, processes, threshold, gpu, train_fraction, factor, 
+    n, m, epochs, lr, opt, batch_size, N, basis, fs, heart_rate, isnr, mode, 
+    orthogonal, source, seed_matrix, seed_training, processes, threshold, gpu, train_fraction, factor, 
     min_lr, min_delta, patience
 ):
 
 
     # ------------------ Constants ------------------
-    corr_name = '96af96a7ddfcb2f6059092c250e18f2a.pkl'
+    corr_name = '96af96a7ddfcb2f6059092c250e18f2a'
     support_method = 'TSOC'
-    seed_data = 11 # seed relative to training data
-    seed_support = 0 # seed used to generate the supports
+    seed_data = 11 # seed relative to training datas
     seed_data_matrix = 0 # seed used to generate data for sensing matrix selection
     seed_selection = 0 # seed used to select the best sensing matrix on data geneerated with seed_data_matrix
     M = 1_000 # number of evaluated sensing matrices
+    loc = 0.25
 
     # ------------------ Folders ------------------
     model_folder = f'{models_dir}TSOC'
@@ -75,23 +75,25 @@ def training(
     if source == 'random':
         # Generate a random sensing matrix
         if mode == 'rakeness':
-            corr_path = os.path.join(dataset_dir, 'correlation', corr_name)
+            corr_path = os.path.join(dataset_dir, 'correlation', f'{corr_name}.pkl')
             with open(corr_path, 'rb') as f:
                 C = pickle.load(f)
         else:
             C = None
-        A = generate_sensing_matrix((m, n), mode=mode, orthogonal=orthogonal, correlation=C, loc=.25, seed=index)
+        A = generate_sensing_matrix((m, n), mode=mode, orthogonal=orthogonal, correlation=C, loc=loc, seed=seed_matrix)
     elif source == 'best':
         # Load the best sensing matrix
 
         A_folder = f'ecg_N=10000_n={n}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}_isnr={isnr}_seed={seed_data_matrix}'
         A_name = f'sensing_matrix_M={M}_m={m}_mode={mode}_seed={seed_selection}'
         if mode == 'rakeness':
-            A_name = f'{A_name}_loc={.25}_corr={corr_name}'
+            A_name = f'{A_name}_loc={loc}_corr={corr_name}'
         data_path = os.path.join(dataset_dir, A_folder, 'A_Filippo', f'{A_name}.pkl')
         with open(data_path, 'rb') as f:
             A_dict = pickle.load(f)
-        A = A_dict[index]['matrix']
+        A = A_dict[seed_matrix]['matrix']
+        seed_matrix = A_dict[seed_matrix]['seed']
+        logging.info(f'sensing matrix ({m}, {n}) with seed={seed_matrix} loaded')
 
     cs = CompressedSensing(A, D)
     Y = cs.encode(X)  # measurements
@@ -99,10 +101,10 @@ def training(
     # ------------------ Labels (support) ------------------
     if mode == 'rakeness':
         supports_name = f'supports_method={support_method}_mode={mode}_m={m}'\
-            f'_corr={corr_name}_loc={.25}_orth={orthogonal}_seed={seed_support}.pkl'
+            f'_corr={corr_name}_loc={loc}_orth={orthogonal}_seed={seed_matrix}.pkl'
     else:
         supports_name = f'supports_method={support_method}_mode={mode}_m={m}'\
-                f'_orth={orthogonal}_seed={seed_support}.pkl'
+                f'_orth={orthogonal}_seed={seed_matrix}.pkl'
 
     data_path = os.path.join(dataset_dir, data_name, supports_name)
     with open(data_path, 'rb') as f:
@@ -127,14 +129,12 @@ def training(
     tsoc = TSOC(n, m)
     tsoc.to(device) # move the network to GPU
     model_name = f'TSOC-N={N}_n={n}_m={m}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}'\
-                f'_isnr={isnr}_mode={mode}_src={source}_ort={orthogonal}_seedmat={index}_epochs={epochs}_bs={batch_size}_opt=sgd_lr={lr}'\
+                f'_isnr={isnr}_mode={mode}_src={source}_ort={orthogonal}_seedmat={seed_matrix}'\
+                f'_epochs={epochs}_bs={batch_size}_opt={opt}_lr={lr}'\
                 f'_th={threshold}_tf={train_fraction}_minlr={min_lr}_p={patience}'\
-                f'_mind={min_delta}_seeddata={seed_data}_seedtrain={seed_training}'\
-                f'_seedselect={seed_selection}_seedsup={seed_support}'        
+                f'_mind={min_delta}_seeddata={seed_data}_seedtrain={seed_training}'    
     if mode == 'rakeness':
-        model_name = f'{model_name}_corr={corr_name}'
-    if source == 'best':
-        model_name = f'{model_name}_seeddatamat={seed_data_matrix}_M={M}'
+        model_name = f'{model_name}_corr={corr_name}_loc={loc}'
     model_path = os.path.join(model_folder, f'{model_name}.pth')
 
     # ------------------ Trining loop ------------------
@@ -142,7 +142,10 @@ def training(
         print(f'Model\n{model_name}\nhas already been trained')
         sys.exit(0)
     else:
-        optimizer = optim.SGD(tsoc.parameters(), lr=lr)
+        if opt=='sgd':
+            optimizer = optim.SGD(tsoc.parameters(), lr=lr)
+        elif opt=='adam':
+            optimizer = optim.Adam(tsoc.parameters(), lr=lr)
         scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=factor, threshold=min_delta, threshold_mode='abs', patience=patience//2, min_lr=min_lr)
         min_val_loss = np.inf
         patience_counter = 0
@@ -218,26 +221,27 @@ def parse_args():
     parser.add_argument('--n', '-n', type=int, required=True, help="Number of samples per signal")
     parser.add_argument('--m', '-m', type=int, required=True, help="Number of measurements")
     parser.add_argument('--isnr', '-i', type=int, required=True, help="Signal-to-noise ratio (SNR)")
-    parser.add_argument('--mode', '-md', type=str, choices=['standard', 'rakeness'], required=True, help="Measurement matrix mode: 'standard' or 'rakeness'")
-    parser.add_argument('--seed_training', '-st', type=int, required=True, help="Training-related random seed for reproducibility")
-    parser.add_argument('--index', '-idx', type=int, required=True, help="Seed for random or index for (one of) the best Measurement matrix")
+    parser.add_argument('--mode', '-M', type=str, choices=['standard', 'rakeness'], required=True, help="Measurement matrix mode: 'standard' or 'rakeness'")
+    parser.add_argument('--seed_training', '-s', type=int, required=True, help="Training-related random seed for reproducibility")
+    parser.add_argument('--seed_matrix', '-S', type=int, required=True, help="Seed for random or index for (one of) the best Measurement matrix")
     parser.add_argument('--epochs', '-e', type=int, default=500, help="Number of training epochs")
     parser.add_argument('--lr', '-l', type=float, default=0.1, help="Learning rate")
     parser.add_argument('--batch_size', '-b', type=int, default=50, help="Batch size for training")
-    parser.add_argument('--N', type=int, default=2_000_000, help="Number of training instances")
+    parser.add_argument('--N', '-N', type=int, default=2000000, help="Number of training instances")
     parser.add_argument('--basis', '-B', type=str, default='sym6', help="Wavelet basis function")
+    parser.add_argument('--optimizer', '-O', type=str, default='adam', help="Optimizer for training")
     parser.add_argument('--fs', '-f', type=int, default=256, help="Sampling frequency")
-    parser.add_argument('--heart_rate', '-hr', type=int, nargs=2, default=(60, 100), help="Heart rate range")
+    parser.add_argument('--heart_rate', '-r', type=int, nargs=2, default=(60, 100), help="Heart rate range")
     parser.add_argument('--orthogonal', '-o', action='store_true', help="Use orthogonalized measurement matrix (default: False)")
-    parser.add_argument('--source', '-src', type=str, choices=['best', 'random'], default='best', help="Measurement matrix type: genereated randomly or leading to best performance")
+    parser.add_argument('--source', '-c', type=str, choices=['best', 'random'], default='best', help="Measurement matrix type: genereated randomly or leading to best performance")
     parser.add_argument('--processes', '-p', type=int, default=48, help="Number of CPU processes")
     parser.add_argument('--threshold', '-t', type=float, default=0.5, help="Threshold for metrics")
     parser.add_argument('--gpu', '-g', type=int, default=3, help="GPU index to use for training")
-    parser.add_argument('--train_fraction', '-tf', type=float, default=0.9, help="Fraction of data used for training")
-    parser.add_argument('--factor', '-fct', type=float, default=0.2, help="Factor for ReduceLROnPlateau scheduler")
-    parser.add_argument('--min_lr', '-minlr', type=float, default=0.001, help="Minimum learning rate")
-    parser.add_argument('--min_delta', '-mind', type=float, default=1e-4, help="Minimum delta for early stopping and ReduceLROnPlateau")
-    parser.add_argument('--patience', '-pt', type=int, default=40, help="Patience for early stopping")
+    parser.add_argument('--train_fraction', '-T', type=float, default=0.9, help="Fraction of data used for training")
+    parser.add_argument('--factor', '-F', type=float, default=0.2, help="Factor for ReduceLROnPlateau scheduler")
+    parser.add_argument('--min_lr', '-L', type=float, default=0.001, help="Minimum learning rate")
+    parser.add_argument('--min_delta', '-d', type=float, default=1e-4, help="Minimum delta for early stopping and ReduceLROnPlateau")
+    parser.add_argument('--patience', '-P', type=int, default=40, help="Patience for early stopping")
     
     return parser.parse_args()
 
@@ -252,6 +256,7 @@ if __name__ == '__main__':
         m=args.m,
         epochs=args.epochs,
         lr=args.lr,
+        opt=args.optimizer,
         batch_size=args.batch_size,
         N=args.N,
         basis=args.basis,
@@ -261,13 +266,13 @@ if __name__ == '__main__':
         mode=args.mode,  
         orthogonal=args.orthogonal,
         source=args.source,
-        index=args.index,
+        seed_matrix=args.seed_matrix,
         seed_training=args.seed_training,
         processes=args.processes,
         threshold=args.threshold,
         gpu=args.gpu,
         train_fraction=args.train_fraction,
-        factor=args.factor,
+        factor=args.factor,  
         min_lr=args.min_lr,
         min_delta=args.min_delta,
         patience=args.patience
