@@ -1,10 +1,10 @@
 import os
 
-os.environ["OMP_NUM_THREADS"] = "5" 
-os.environ["OPENBLAS_NUM_THREADS"] = "5" 
-os.environ["MKL_NUM_THREADS"] = "5" 
-os.environ["VECLIB_MAXIMUM_THREADS"] = "5" 
-os.environ["NUMEXPR_NUM_THREADS"] = "5"
+os.environ["OMP_NUM_THREADS"] = "6" 
+os.environ["OPENBLAS_NUM_THREADS"] = "6" 
+os.environ["MKL_NUM_THREADS"] = "6" 
+os.environ["VECLIB_MAXIMUM_THREADS"] = "6" 
+os.environ["NUMEXPR_NUM_THREADS"] = "6"
 
 import sys
 import torch
