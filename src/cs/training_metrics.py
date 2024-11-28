@@ -72,7 +72,7 @@ def rsnr(x_pred, x_true, reduce=False):
         rsnr = torch.mean(rsnr)
     return rsnr
 
-def estimate_rsnr(cs):
+def compute_rsnr(cs):
     def metric(output, x_true, th=0.5):
         y_true = cs.encode(x_true.cpu().numpy())  # Convert to NumPy
         z_pred = (output > th).float().cpu().numpy()  # Convert to NumPy
