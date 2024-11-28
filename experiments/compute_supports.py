@@ -11,11 +11,11 @@ import logging
 import argparse
 
 # limit number of parallel threads numpy spawns
-os.environ["OMP_NUM_THREADS"] = "4"
-os.environ["OPENBLAS_NUM_THREADS"] = "4"
-os.environ["MKL_NUM_THREADS"] = "6"
-os.environ["VECLIB_MAXIMUM_THREADS"] = "4"
-os.environ["NUMEXPR_NUM_THREADS"] = "6"
+os.environ["OMP_NUM_THREADS"] = "8"
+os.environ["OPENBLAS_NUM_THREADS"] = "8"
+os.environ["MKL_NUM_THREADS"] = "8"
+os.environ["VECLIB_MAXIMUM_THREADS"] = "8"
+os.environ["NUMEXPR_NUM_THREADS"] = "8"
 import numpy as np
 
 from tqdm import tqdm
