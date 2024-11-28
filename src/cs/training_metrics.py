@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from cs.utils import compute_rsnr
 
 def number_positive(output, z_true, th=0.5, reduce=True):
     P = torch.sum(z_true, dim=-1)
@@ -92,7 +91,7 @@ def compute_metrics(output, z_true, th=0.5):
         'TP': true_positive(output, z_true, th).item(), 
         'TPR': tpr(output, z_true, th).item(),
         'TNR': tnr(output, z_true, th).item(),
-        'ACC': accuracy(output, z_true, th).item()
+        'ACC': accuracy(output, z_true, th).item(),
         }
 
 def update_metrics(metrics_accumulator, batch_metrics):
