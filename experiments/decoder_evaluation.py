@@ -143,10 +143,14 @@ def test(
     O = O.cpu().detach().numpy() # Moves the tensor from the GPU to the CPU,
     # removes it from the computation graph and converts it to numpy array
 
+    # calculate supports
+    Zhat = O > threshold
+
     # signal reconstruction
     Xhat = np.empty(X.shape)
     for i in tqdm.tqdm(range(N_test)):
-        Xhat[i] = reconstructor(O[i], Y[i], A, D)
+        # Xhat[i] = reconstructor(O[i], Y[i], A, D)
+        Xhat[i] = cs.decode_with_support(Y[i], Zhat[i])
     RSNR = compute_rsnr(X, Xhat)
     results['RSNR'] = np.mean(RSNR)
 
