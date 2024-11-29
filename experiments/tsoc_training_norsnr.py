@@ -6,9 +6,7 @@ from torch.utils.data import random_split, DataLoader, TensorDataset
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 import numpy as np
-import pandas as pd
 import pickle
-import tqdm
 import argparse
 import logging
 

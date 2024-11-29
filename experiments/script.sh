@@ -225,10 +225,11 @@ isnr=35             # Signal-to-noise ratio (SNR)
 
 m=48                # Number of measurements
 # m_list=(16 32 48 64)
-m_list=(48)
-seed_training=1     # Training-related random seed for reproducibility
+# m_list=(48)
+# seed_training=1     # Training-related random seed for reproducibility
+seed_training_list=(0 1 2 3)
 mode="rakeness"     # Encoder mode, change to 'rakeness' if needed
-gpu=3               # GPU index
+gpu=5               # GPU index
 
 # optimizer="sgd"    # Optimizer for training
 # lr=0.1              # Learning rate
@@ -242,7 +243,8 @@ min_lr=0.00001      # Minimum learning rate
 
 orthogonal=True     # Whether to use orthogonalized matrix
 source='best'       # Whether to use best or random matrix
-seed_matrix=0       # Index or seed of the best or random matrix, respectivelly
+# seed_matrix=0       # Index or seed of the best or random matrix, respectivelly
+seed_matrix_list=(0 1 2 3)
 
 train_fraction=0.9  # Fraction of data used for training
 factor=0.2          # Factor for ReduceLROnPlateau scheduler
@@ -258,6 +260,7 @@ heart_rate="60 100" # Heart rate range
 threshold=0.5       # Threshold for metrics
 processes=48        # Number of CPU processes for parallelism
 
+for 
 for m in "${m_list[@]}"
     do
         if [ "$orthogonal" = "True" ]; then
