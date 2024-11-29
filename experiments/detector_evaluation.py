@@ -190,9 +190,9 @@ def test(
                 f'_mind={min_delta}_seeddata={seed_train_data}_seedtrain={seed_training}'\
                 f'_seedselect={seed_selection}_seedsup={seed_support}'        
         if mode == 'rakeness':
-            model_name = f'_{model_name}_corr={corr_name}'
+            model_name = f'{model_name}_corr={corr_name}'
         if source == 'best':
-            model_name = f'_{model_name}_seeddatamat={seed_data_matrix}_M={M}'
+            model_name = f'{model_name}_seeddatamat={seed_data_matrix}_M={M}'
         model_path = os.path.join(model_folder, f'{model_name}.pth')
         detector = TSOCDetector(n, m, model_path, seed, mode=detector_mode, gpu=device)
         detector = detector.fit()
@@ -240,9 +240,9 @@ def test(
                 f'_isnr={isnr}_mode={mode}_src={source}_ort={orthogonal}_seedmat={index}_tf={train_fraction}_seeddet={seed_detector}'\
                 f'_seeddata={seed_train_data}_seedtrain={seed_training}_seedselect={seed_selection}'
         if mode == 'rakeness':
-            model_name = f'_{model_name}_corr={corr_name}'
+            model_name = f'{model_name}_corr={corr_name}'
         if source == 'best':
-            model_name = f'_{model_name}_seeddatamat={seed_data_matrix}_M={M}'
+            model_name = f'{model_name}_seeddatamat={seed_data_matrix}_M={M}'
         model_path = os.path.join(detectors_dir, f'{model_name}.pkl')
         
         if os.path.exists(model_path):
