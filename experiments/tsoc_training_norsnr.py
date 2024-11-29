@@ -50,13 +50,25 @@ def training(
     logging.info(f"Running test with parameters: {params_str}")
 
     
-    # ------------------ Seeds ------------------
+    # ------------------ Reproducibility ------------------
     # Set the seed for PyTorch (CPU)
     torch.manual_seed(seed_training)
 
     # Set the seed for PyTorch (GPU)
     torch.cuda.manual_seed(seed_training)
     torch.cuda.manual_seed_all(seed_training)  # For multi-GPU setups
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+
+    def seed_worker(worker_id):
+        # Ensure worker processes have deterministic behavior
+        worker_seed = torch.initial_seed() % 2**32
+        torch.manual_seed(worker_seed)
+        torch.cuda.manual_seed(worker_seed)
+
+    # Use a PyTorch generator to control randomness
+    generator = torch.Generator()
+    generator.manual_seed(seed_training)
 
     # ------------------ GPU ------------------
     device = torch.device(f'cuda:{gpu}' if torch.cuda.is_available() else 'cpu')
@@ -122,8 +134,10 @@ def training(
     train_dataset, val_dataset = random_split(dataset, [train_size, val_size], generator=generator)
 
     # Create data loaders for training and validation
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=processes)
-    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=processes)
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True,
+                              num_workers=processes, worker_init_fn=seed_worker, generator=generator)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False,
+                             num_workers=processes, worker_init_fn=seed_worker, generator=generator)
 
     # ------------------ Neural Network initialization ------------------
     tsoc = TSOC(n, m)
