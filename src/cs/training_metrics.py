@@ -73,8 +73,11 @@ def rsnr(x_pred, x_true, reduce=False):
     return rsnr
 
 def compute_rsnr(cs):
-    def metric(output, x_true, th=0.5, reduce=True):
-        y_true = cs.encode(x_true.cpu().numpy())  # Convert to NumPy
+    def metric(output, x_true, y_true=None, th=0.5, reduce=True):
+        if y_true is None:
+            y_true = cs.encode(x_true.cpu().numpy())
+        else:  
+            y_true = y_true.cpu().numpy() # Convert to NumPy
         z_pred = (output > th).cpu().numpy().astype(bool) # Convert to NumPy
 
         # signal reconstruction
