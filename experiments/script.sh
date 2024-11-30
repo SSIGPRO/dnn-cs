@@ -225,7 +225,7 @@ isnr=35             # Signal-to-noise ratio (SNR)
 
 m=48                # Number of measurements
 # m_list=(16 32 48 64)
-# m_list=(48)
+m_list=(48)
 # seed_training=1     # Training-related random seed for reproducibility
 seed_training_list=(0 1 2 3)
 mode="rakeness"     # Encoder mode, change to 'rakeness' if needed
@@ -244,12 +244,12 @@ min_lr=0.00001      # Minimum learning rate
 orthogonal=True     # Whether to use orthogonalized matrix
 source='best'       # Whether to use best or random matrix
 # seed_matrix=0       # Index or seed of the best or random matrix, respectivelly
-seed_matrix_list=(0 1 2 3)
+seed_matrix_list=(2 3)
 
 train_fraction=0.9  # Fraction of data used for training
 factor=0.2          # Factor for ReduceLROnPlateau scheduler
 
-min_delta=1e-4      # Minimum delta for early stopping and ReduceLROnPlateau
+min_delta=1e-5      # Minimum delta for early stopping and ReduceLROnPlateau
 patience=40         # Patience for early stopping
 epochs=1000         # Number of training epochs
 
@@ -260,42 +260,50 @@ heart_rate="60 100" # Heart rate range
 threshold=0.5       # Threshold for metrics
 processes=48        # Number of CPU processes for parallelism
 
-for 
-for m in "${m_list[@]}"
-    do
-        if [ "$orthogonal" = "True" ]; then
-            orthogonal_flag="--orthogonal"
-        else
-            orthogonal_flag=""
-        fi
 
-        # Run the training script with the selected configuration
-        python tsoc_training_norsnr.py \
-            --n $n \
-            --m $m \
-            --epochs $epochs \
-            --lr $lr \
-            --optimizer $optimizer \
-            --batch_size $batch_size \
-            --N $N \
-            --basis $basis \
-            --fs $fs \
-            --heart_rate $heart_rate \
-            --isnr $isnr \
-            --mode $mode \
-            $orthogonal_flag \
-            --source $source \
-            --seed_matrix $seed_matrix \
-            --seed_training $seed_training \
-            --processes $processes \
-            --threshold $threshold \
-            --gpu $gpu \
-            --train_fraction $train_fraction \
-            --factor $factor \
-            --min_lr $min_lr \
-            --min_delta $min_delta \
-            --patience $patience
+if [ "$orthogonal" = "True" ]; then
+    orthogonal_flag="--orthogonal"
+else
+    orthogonal_flag=""
+fi
+
+
+for seed_training in "${seed_training_list[@]}"
+do
+    for seed_matrix in "${seed_matrix_list[@]}"
+    do
+        for m in "${m_list[@]}"
+        do
+
+            # Run the training script with the selected configuration
+            python tsoc_training_norsnr.py \
+                --n $n \
+                --m $m \
+                --epochs $epochs \
+                --lr $lr \
+                --optimizer $optimizer \
+                --batch_size $batch_size \
+                --N $N \
+                --basis $basis \
+                --fs $fs \
+                --heart_rate $heart_rate \
+                --isnr $isnr \
+                --mode $mode \
+                $orthogonal_flag \
+                --source $source \
+                --seed_matrix $seed_matrix \
+                --seed_training $seed_training \
+                --processes $processes \
+                --threshold $threshold \
+                --gpu $gpu \
+                --train_fraction $train_fraction \
+                --factor $factor \
+                --min_lr $min_lr \
+                --min_delta $min_delta \
+                --patience $patience
+        done
     done
+done
 
 ##############################################################################
 # TSOC Reconstruction Performanve Evaluation for Multiple Configurations     #
