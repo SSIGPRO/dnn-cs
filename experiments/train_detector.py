@@ -41,16 +41,17 @@ logging.basicConfig(level=logging.DEBUG)
 
 def test(
     n, m, N_train, basis, fs, heart_rate, isnr, mode, train_fraction,
-    orthogonal, source, index, seed_detector, detector_type, 
+    orthogonal, source, seed_matrix, seed_detector, detector_type, 
     k, order, kernel, nu, neighbors, estimators
 ):
     # ------------------ Constants ------------------
-    corr_name = '96af96a7ddfcb2f6059092c250e18f2a.pkl'
+    corr_name = '96af96a7ddfcb2f6059092c250e18f2a'
     seed_train_data = 11
     seed_training = 0 # seed for training data split
     seed_data_matrix = 0
     seed_selection = 0
     M = 1_000
+    loc = 0.25
 
     # ------------------ Show parameter values ------------------
     params = locals()
@@ -77,23 +78,25 @@ def test(
     if source == 'random':
         # Generate a random sensing matrix
         if mode == 'rakeness':
-            corr_path = os.path.join(dataset_dir, 'correlation', corr_name)
+            corr_path = os.path.join(dataset_dir, 'correlation', f'{corr_name}.pkl')
             with open(corr_path, 'rb') as f:
                 C = pickle.load(f)
         else:
             C = None
-        A = generate_sensing_matrix((m, n), mode=mode, orthogonal=orthogonal, correlation=C, loc=.25, seed=index)
+        A = generate_sensing_matrix((m, n), mode=mode, orthogonal=orthogonal, correlation=C, loc=loc, seed=seed_matrix)
     elif source == 'best':
         # Load the best sensing matrix
 
         A_folder = f'ecg_N=10000_n={n}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}_isnr={isnr}_seed={seed_data_matrix}'
         A_name = f'sensing_matrix_M={M}_m={m}_mode={mode}_seed={seed_selection}'
         if mode == 'rakeness':
-            A_name = f'{A_name}_loc={.25}_corr={corr_name}'
+            A_name = f'{A_name}_loc={loc}_corr={corr_name}'
         data_path = os.path.join(dataset_dir, A_folder, 'A_Filippo', f'{A_name}.pkl')
         with open(data_path, 'rb') as f:
             A_dict = pickle.load(f)
-        A = A_dict[index]['matrix']
+        A = A_dict[seed_matrix]['matrix']
+        seed_matrix = A_dict[seed_matrix]['seed']
+        logging.info(f'sensing matrix ({m}, {n}) with seed={seed_matrix} loaded')
 
     cs = CompressedSensing(A, D)
     Y_train = cs.encode(X_train) # measurements
@@ -135,13 +138,10 @@ def test(
         
      # fit the detector
     model_name = f'{detector_label}_N={N_train}_n={n}_m={m}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}'\
-                f'_isnr={isnr}_mode={mode}_src={source}_ort={orthogonal}_seedmat={index}_tf={train_fraction}_seeddet={seed_detector}'\
-                f'_seeddata={seed_train_data}_seedtrain={seed_training}_seedselect={seed_selection}'
+                f'_isnr={isnr}_mode={mode}_src={source}_ort={orthogonal}_seedmat={seed_matrix}_tf={train_fraction}_seeddet={seed_detector}'\
+                f'_seeddata={seed_train_data}_seedtrain={seed_training}'
     if mode == 'rakeness':
-        model_name = f'{model_name}_corr={corr_name}'
-    if source == 'best':
-        model_name = f'{model_name}_seeddatamat={seed_data_matrix}_M={M}'
-    model_path = os.path.join(detectors_dir, f'{model_name}.pkl')
+        model_name = f'{model_name}_corr={corr_name}_loc={loc}'
     model_path = os.path.join(detectors_dir, f'{model_name}.pkl')
     # stop if already trained
     if os.path.exists(model_path):
@@ -172,7 +172,7 @@ def parse_args():
     parser.add_argument('-m', '--m', type=int, required=True, help="Number of measurements")
     parser.add_argument('-s', '--seed_detector', type=int, required=True, help="Random seed associated to the detector")
     parser.add_argument('-md', '--mode', type=str, choices=['standard', 'rakeness'], required=True, help="Sensing matrix mode: 'standard' or 'rakeness'")
-    parser.add_argument('-idx', '--index', type=int, required=True, help="Seed for random or index for (one of) the best sensing matrix")
+    parser.add_argument('-S', '--seed_matrix', type=int, required=True, help="Seed for random or index for (one of) the best sensing matrix")
     parser.add_argument('-i', '--isnr', type=int, required=True, help="Signal-to-noise ratio (SNR) in dB")
     parser.add_argument('-dt', '--detector_type', type=str, required=True, help="Type of detector to evaluate (e.g., TSOC, SPE, OCSVM, LOF)")
     parser.add_argument('-N', '--N_train', type=int, default=2000000, help="Number of training samples")
@@ -210,7 +210,7 @@ if __name__ == "__main__":
         train_fraction = args.train_fraction,
         orthogonal=args.orthogonal,
         source=args.source,
-        index=args.index,
+        seed_matrix=args.seed_matrix,
         seed_detector=args.seed_detector,
         detector_type=args.detector_type,
         k=args.k,
