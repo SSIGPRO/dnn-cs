@@ -1,4 +1,11 @@
 import os
+
+os.environ["OMP_NUM_THREADS"] = "6" 
+os.environ["OPENBLAS_NUM_THREADS"] = "6" 
+os.environ["MKL_NUM_THREADS"] = "6" 
+os.environ["VECLIB_MAXIMUM_THREADS"] = "6" 
+os.environ["NUMEXPR_NUM_THREADS"] = "6"
+
 import sys
 import torch
 import torch.nn as nn
@@ -131,9 +138,9 @@ def test(
                 f'_isnr={isnr}_mode={mode}_src={source}_ort={orthogonal}_seedmat={index}_tf={train_fraction}_seeddet={seed_detector}'\
                 f'_seeddata={seed_train_data}_seedtrain={seed_training}_seedselect={seed_selection}'
     if mode == 'rakeness':
-        model_name = f'_{model_name}_corr={corr_name}'
+        model_name = f'{model_name}_corr={corr_name}'
     if source == 'best':
-        model_name = f'_{model_name}_seeddatamat={seed_data_matrix}_M={M}'
+        model_name = f'{model_name}_seeddatamat={seed_data_matrix}_M={M}'
     model_path = os.path.join(detectors_dir, f'{model_name}.pkl')
     model_path = os.path.join(detectors_dir, f'{model_name}.pkl')
     # stop if already trained
@@ -181,7 +188,7 @@ def parse_args():
     parser.add_argument('-ord', '--order', type=int, default=1, help="Order parameter for AR detector")
     parser.add_argument('-krn', '--kernel', type=str, default='rbf', help="Kernel type for OCSVM (e.g., linear, rbf, poly)")
     parser.add_argument('-nu', '--nu', type=float, default=0.5, help="Anomaly fraction for OCSVM")
-    parser.add_argument('-nn', '--neighbors', type=int, default=10, help="Number of neighbors for LOF detector")
+    parser.add_argument('-nn', '--neighbors', type=int, default=20, help="Number of neighbors for LOF detector")
     parser.add_argument('-est', '--estimators', type=int, default=100, help="Number of estimators for IF detector")
 
     return parser.parse_args()
