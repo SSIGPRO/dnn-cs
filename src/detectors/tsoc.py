@@ -55,8 +55,9 @@ class TSOCDetector(Detector):
         dataset = TensorDataset(Ytensor)  # Create a dataset from the tensor
         loader = DataLoader(dataset, batch_size=self.batch_size, shuffle=False)
         for batch_idx, Y_batch in enumerate(loader):
+            Y_batch = Y_batch[0]
             if self.gpu is not None:
-                Y_batch = Y_batch[0].to(self.gpu) 
+                Y_batch = Y_batch.to(self.gpu) 
             O_batch = self.tsoc(Y_batch)
             O[self.batch_size*batch_idx: self.batch_size*(batch_idx + 1)] = O_batch
 
