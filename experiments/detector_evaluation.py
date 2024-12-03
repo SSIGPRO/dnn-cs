@@ -125,13 +125,19 @@ def test(
                 f'_isnr={isnr}_mode={mode}_src={source}_ort={orthogonal}_seedmat={seed_matrix}'\
                 f'_epochs={epochs}_bs={batch_size}_opt={opt}_lr={lr}'\
                 f'_th={threshold}_tf={train_fraction}_minlr={min_lr}_p={patience}'\
-                f'_mind={min_delta}_seeddata={seed_train_data}_seedtrain={seed_training}'    
+                f'_mind={min_delta}_seeddata={seed_train_data}_seedtrain={seed_training}'
+        file_name = f'AUC_detector={model_name}_delta={delta}_seedko={seed_ko}.pkl'
+        subfolder = f'TSOC_{mode}'   
         if mode == 'rakeness':
             model_name = f'{model_name}_corr={corr_name}_loc={loc}'
-        model_path = os.path.join(model_folder, f'{model_name}.pth')
-        detector = TSOCDetector(n, m, model_path, seed_matrix, mode=detector_mode, gpu=device)
-        detector = detector.fit()
+            subfolder = f'{subfolder}_corr={corr_name}_loc={loc}'
 
+        model_path = os.path.join(model_folder, f'{model_name}.pth')
+        results_path = os.path.join(results_folder, subfolder, file_name)
+
+        detector = TSOCDetector(n, m, model_path, seed_matrix, mode=detector_mode, threshold=threshold, gpu=device)
+        detector = detector.fit()
+        
     # evaluate a standard detector
     # init the detector      
     elif detector_type in standard_detectors:
@@ -185,7 +191,9 @@ def test(
             print(f'\ndetector {detector_label} has not been trained')
             sys.exit(0)
 
-    results_path = os.path.join(results_folder, f'AUC_detector={model_name}_delta={delta}_seedko={seed_ko}.pkl')
+        results_path = os.path.join(results_folder, f'AUC_detector={model_name}_delta={delta}_seedko={seed_ko}.pkl')
+        
+    os.makedirs(os.path.dirname(results_path), exist_ok=True)
     if os.path.exists(results_path):
         print(f'\ndetector {detector_label} has been already evaluated')
         sys.exit(0)
@@ -275,7 +283,6 @@ def test(
         metric_value = detector.test(Zanom, metric='AUC')
         result.loc[anomaly_label] = metric_value
 
-   
     pd.to_pickle(result, results_path)
 
 # ------------------ Parser definition ------------------
