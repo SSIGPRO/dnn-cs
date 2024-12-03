@@ -9,35 +9,24 @@ from wombats.detectors._base import Detector
 
 class TSOCDetector(Detector):
 
-    def __init__(self, n, m, model_path, seed, batch_size=100, mode='self-assessment', threshold=0.5, basis='sym6', gpu=None):
+    def __init__(self, cs, model_path, batch_size=100, mode='self-assessment', threshold=0.5,  gpu=None):
         
-        # # extract parameters from model's name
-        # parts = model_name.split('_')
-        # self.n = int([part for part in parts if 'n' in part][0].split('=')[1])
-        # self.m = int([part for part in parts if 'm' in part][0].split('=')[1])
-        # self.seed = int([part for part in parts if 'seed' in part][0].split('=')[1])
-
-        self.n = n
-        self.m = m
-        self.seed = seed
+        self.cs = cs
+        self.n = cs.n
+        self.m = cs.m
         self.threshold = threshold
 
         # init TSOC
-        self.tsoc = TSOC(self.n, self.m)
+        self.tsoc = TSOC(cs.n, cs.m)
         if gpu is not None :
             self.gpu = gpu
             self.tsoc.to(self.gpu) # move the network to specified device
         else:
             self.gpu = None
         self.model_path = model_path
-        # init Compressed Sensing
-        self.A = generate_sensing_matrix((self.m, self.n), seed=self.seed)
-        self.D = wavelet_basis(self.n, basis, level=2)
-        self.cs = CompressedSensing(self.A, self.D)
         # batch_size for evaluation
         self.batch_size = batch_size
         self.mode = mode
-        self.basis = basis
             
     def fit(self, *args, **kwargs):
         # load trained TSOC model
@@ -50,9 +39,8 @@ class TSOCDetector(Detector):
 
         # compute support estimation
         self.tsoc.eval()  
-        Ytensor = torch.from_numpy(Y).float()
         O = torch.empty(X_test.shape)
-        dataset = TensorDataset(Ytensor)  # Create a dataset from the tensor
+        dataset = TensorDataset(torch.from_numpy(Y).float())  # Create a dataset from the tensor
         loader = DataLoader(dataset, batch_size=self.batch_size, shuffle=False)
         for batch_idx, Y_batch in enumerate(loader):
             Y_batch = Y_batch[0]

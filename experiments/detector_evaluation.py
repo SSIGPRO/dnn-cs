@@ -133,9 +133,9 @@ def test(
             subfolder = f'{subfolder}_corr={corr_name}_loc={loc}'
 
         model_path = os.path.join(model_folder, f'{model_name}.pth')
-        results_path = os.path.join(results_folder, subfolder, file_name)
+        results_path = os.path.join(results_folder, subfolder, detector_mode, file_name)
 
-        detector = TSOCDetector(n, m, model_path, seed_matrix, mode=detector_mode, threshold=threshold, gpu=device)
+        detector = TSOCDetector(cs, model_path, mode=detector_mode, threshold=threshold, gpu=device)
         detector_label = model_name
         detector = detector.fit()
         
