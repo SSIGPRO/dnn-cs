@@ -136,6 +136,7 @@ def test(
         results_path = os.path.join(results_folder, subfolder, file_name)
 
         detector = TSOCDetector(n, m, model_path, seed_matrix, mode=detector_mode, threshold=threshold, gpu=device)
+        detector_label = model_name
         detector = detector.fit()
         
     # evaluate a standard detector
@@ -192,7 +193,7 @@ def test(
             sys.exit(0)
 
         results_path = os.path.join(results_folder, f'AUC_detector={model_name}_delta={delta}_seedko={seed_ko}.pkl')
-        
+
     os.makedirs(os.path.dirname(results_path), exist_ok=True)
     if os.path.exists(results_path):
         print(f'\ndetector {detector_label} has been already evaluated')
