@@ -9,7 +9,7 @@ from wombats.detectors._base import Detector
 
 class TSOCDetector(Detector):
 
-    def __init__(self, n, m, model_path, seed, batch_size=100, mode='self-assessment', basis='sym6', gpu=None):
+    def __init__(self, n, m, model_path, seed, batch_size=100, mode='self-assessment', threshold=0.5, basis='sym6', gpu=None):
         
         # # extract parameters from model's name
         # parts = model_name.split('_')
@@ -20,6 +20,7 @@ class TSOCDetector(Detector):
         self.n = n
         self.m = m
         self.seed = seed
+        self.threshold = threshold
 
         # init TSOC
         self.tsoc = TSOC(self.n, self.m)
@@ -64,10 +65,13 @@ class TSOCDetector(Detector):
         else:
             O = O.detach().numpy()
 
+        # calculate supports
+        Zhat = O > self.threshold
+
         # reconstruct data
         Xhat = np.empty(X_test.shape)
         for i in range(X_test.shape[0]):
-            Xhat[i] = reconstructor(O[i], Y[i], self.A, self.D)
+            Xhat[i] = self.cs.decode_with_support(Y[i], Zhat[i])
 
         if self.mode=='autoencoder':
             # estiamte the difference between the reconstructed data and data
