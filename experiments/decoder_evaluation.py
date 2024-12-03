@@ -97,7 +97,7 @@ def test(
     # ------------------ Decoder initializaion ------------------
     tsoc = TSOC(n, m)
     tsoc.to(device) # move the network to GPU
-    print(tsoc)
+
     model_name = f'TSOC-N={N_train}_n={n}_m={m}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}'\
                 f'_isnr={isnr}_mode={mode}_src={source}_ort={orthogonal}_seedmat={seed_matrix}'\
                 f'_epochs={epochs}_bs={batch_size}_opt={opt}_lr={lr}'\
@@ -108,6 +108,12 @@ def test(
     model_path = os.path.join(model_folder, f'{model_name}.pth')
     tsoc.load_state_dict(torch.load(model_path, weights_only=True))
     tsoc.eval()     # Set the model to evaluation mode
+
+    results_path = os.path.join(results_folder, f'{model_name}.pkl')
+    os.makedirs(os.path.dirname(results_path), exist_ok=True)
+    if os.path.exists(results_path):
+        print(f'Model\n{model_name}\nhas already been evaluated')
+        sys.exit(0)
     
     # ------------------ Compute test metric ------------------
     test_metrics = {'P': 0.0, 'TP': 0.0, 'TPR': 0.0, 'TNR': 0.0, 'ACC': 0.0}
@@ -144,7 +150,7 @@ def test(
     results['RSNR'] = np.mean(RSNR)
 
     # save peformance
-    results_path = os.path.join(results_folder, f'{model_name}.pkl')
+    results_path
     pd.to_pickle(pd.Series(results), results_path)
 
 # ------------------ Parser definition ------------------
