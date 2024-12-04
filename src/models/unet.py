@@ -145,7 +145,7 @@ class UpSeq(nn.Module):
             in_ch = channels * (2**i)
             out_ch = in_ch // 2
 
-            l = UpSample(in_ch,out_ch, kernel_size, batch_norm=use_batch_norm)
+            l = UpSample(in_ch, out_ch, kernel_size, batch_norm=use_batch_norm)
             
             self.__setattr__('up_' + str(i), l)
             
@@ -178,33 +178,35 @@ class UpSeq(nn.Module):
         return x
 
 class UNet(nn.Module):
-    def __init__(self, in_channels, num_classes, channels, steps_num=4,
-                 kernel_size=3, simple_pool=True, use_batch_norm=False,
-                 residual=False):
+    def __init__(self, in_channels, num_classes, expanded_channels, 
+                 steps_num=4, kernel_size=3, simple_pool=True,
+                 use_batch_norm=False, residual=False):
         super().__init__()
 
         self.residual = residual
         if residual:
             assert in_channels == num_classes, 'if "residual==True", must have "in_channels==num_classes"'
 
+        padding = kernel_size // 2
+
         self.down = DownSeq(
             in_channels=in_channels,
-             channels=channels,
+             channels=expanded_channels,
               steps_num=steps_num,
                kernel_size=kernel_size,
                 simple_pool=simple_pool,
                  use_batch_norm=use_batch_norm)
         
-        ch = channels * (2**(steps_num-1))
+        ch = expanded_channels * (2**(steps_num-1))
         self.bottle_neck = DoubleConv(ch, ch*2, kernel_size, batch_norm=use_batch_norm)
 
         self.up = UpSeq(
-            channels=channels,
+            channels=expanded_channels,
              kernel_size=kernel_size,
               steps_num=steps_num,
                use_batch_norm=use_batch_norm,)
 
-        self.out = nn.Conv1d(in_channels=channels, out_channels=num_classes, kernel_size=1)
+        self.out = nn.Conv1d(in_channels=expanded_channels, out_channels=num_classes, kernel_size=1)
 
     def forward(self, x_input):
 
@@ -220,86 +222,3 @@ class UNet(nn.Module):
             x = x_input - x
 
         return x
-
-# class UNet(nn.Module):
-#     def __init__(self, in_channels, num_classes, channels, steps_num=4,
-#                  kernel_size=None, simple_pool=True, use_batch_norm=False,
-#                  residual=True):
-#         super().__init__()
-
-#         self.residual = residual
-#         if residual:
-#             assert in_channels == num_classes, 'if "residual==True", must have "in_channels==num_classes"'
-
-#         l_list = []
-#         for i in range(steps_num):
-
-#             if i==0:
-#                 in_down_ch = in_channels
-#                 out_down_ch = channels
-
-#                 in_up_ch = in_channels * (2**steps_num)
-#                 out_up_ch = in_up_ch / 2
-
-#             elif i>0 and i<(steps_num-1):
-#                 in_down_ch = channels * (2**(i-1))
-#                 out_down_ch = in_down_ch * 2
-
-#                 in_up_ch = in_channels * (2**(steps_num-i))
-#                 out_up_ch = in_up_ch / 2
-
-#             elif i==(steps_num-1):
-#                 in_down_ch = channels * (2**(i-1))
-#                 out_down_ch = in_down_ch * 2
-
-#                 in_up_ch = in_channels * (2**(steps_num-i))
-#                 out_up_ch = in_up_ch / 2
-    
-#             layers_down_list += [DownSample(in_down_ch, out_down_ch, kernel_size, simple_pool=simple_pool, batch_norm=use_batch_norm)]
-#             layers_up_list += [UpSample(in_up_ch, out_up_ch, kernel_size, simple_pool=simple_pool, batch_norm=use_batch_norm)]
-
-#         self.down_seq = nn.Sequential(*layers_down_list)
-#         self.up_seq = nn.Sequential(*layers_up_list)
-
-#         # self.down_convolution_1 = DownSample(in_channels, channels, kernel_size, simple_pool=simple_pool, batch_norm=use_batch_norm)
-#         # self.down_convolution_2 = DownSample(channels, channels*2, kernel_size, simple_pool=simple_pool, batch_norm=use_batch_norm)
-#         # self.down_convolution_3 = DownSample(channels*2, channels*4, kernel_size, simple_pool=simple_pool, batch_norm=use_batch_norm)
-#         # self.down_convolution_4 = DownSample(channels*4, channels*8, kernel_size, simple_pool=simple_pool, batch_norm=use_batch_norm)
-
-#         self.bottle_neck = DoubleConv(out_down_ch, out_down_ch*2, kernel_size, batch_norm=use_batch_norm)
-
-#         # self.up_convolution_1 = UpSample(channels*16, channels*8, kernel_size, batch_norm=use_batch_norm)
-#         # self.up_convolution_2 = UpSample(channels*8, channels*4, kernel_size, batch_norm=use_batch_norm)
-#         # self.up_convolution_3 = UpSample(channels*4, channels*2, kernel_size, batch_norm=use_batch_norm)
-#         # self.up_convolution_4 = UpSample(channels*2, channels, kernel_size, batch_norm=use_batch_norm)
-
-#         self.out = nn.Conv1d(in_channels=channels, out_channels=num_classes, kernel_size=1)
-
-#     def forward(self, x):
-
-#         # down_1, p1 = self.down_convolution_1(x)
-        
-#         # down_2, p2 = self.down_convolution_2(p1)
-        
-#         # down_3, p3 = self.down_convolution_3(p2)
-        
-#         # down_4, p4 = self.down_convolution_4(p3)
-        
-#         # b = self.bottle_neck(p4)
-        
-#         # up_1 = self.up_convolution_1(b, down_4)
-        
-#         # up_2 = self.up_convolution_2(up_1, down_3)
-        
-#         # up_3 = self.up_convolution_3(up_2, down_2)
-        
-#         # up_4 = self.up_convolution_4(up_3, down_1)
-        
-#         # out = self.out(up_4)
-
-#         self.up_seq()
-
-#         if self.residual:
-#             out = x - out
-
-#         return out
