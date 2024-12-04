@@ -1,20 +1,12 @@
 import os
 import sys
-# limit number of parallel threads numpy spawns
-os.environ["OMP_NUM_THREADS"] = "8"
-os.environ["OPENBLAS_NUM_THREADS"] = "8"
-os.environ["MKL_NUM_THREADS"] = "8"
-os.environ["VECLIB_MAXIMUM_THREADS"] = "8"
-os.environ["NUMEXPR_NUM_THREADS"] = "8"
 import torch
 import torch.optim as optim
 from torch.utils.data import random_split, DataLoader, TensorDataset
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 import numpy as np
-import pandas as pd
 import pickle
-import tqdm
 import argparse
 import logging
 
@@ -25,7 +17,6 @@ from models import models_dir
 from dataset import dataset_dir
 from cs.wavelet_basis import wavelet_basis
 from cs.training_metrics import compute_metrics, update_metrics
-from cs.training_metrics import compute_rsnr
 from cs.loss import multiclass_loss_alpha
 from models.tsoc import TSOC
 from cs import CompressedSensing, generate_sensing_matrix
@@ -115,6 +106,7 @@ def training(
         logging.info(f'sensing matrix ({m}, {n}) with seed={seed_matrix} loaded')
 
     cs = CompressedSensing(A, D)
+    Y = cs.encode(X)  # measurements
 
     # ------------------ Labels (support) ------------------
     if mode == 'rakeness':
@@ -129,13 +121,14 @@ def training(
         Z = pickle.load(f)
 
     # ------------------ Data loaders ------------------
-    dataset = TensorDataset(torch.from_numpy(X).float(),
-                            torch.from_numpy(Z).float())  # Create a dataset from the tensors
+    dataset = TensorDataset(torch.from_numpy(Y).float(), torch.from_numpy(Z).float())  # Create a dataset from the tensors
     # Split sizes for training and validation
     train_size = int(train_fraction * len(dataset))  # 90% for training
     val_size = len(dataset) - train_size  # 10% for validation
 
     # Split the dataset
+    generator = torch.Generator()
+    generator.manual_seed(seed_training)
     train_dataset, val_dataset = random_split(dataset, [train_size, val_size], generator=generator)
 
     # Create data loaders for training and validation
@@ -169,23 +162,17 @@ def training(
         min_val_loss = np.inf
         patience_counter = 0
 
-        rsnr = compute_rsnr(cs)
-
         for epoch in range(epochs):
             # train loop
             tsoc.train()     # Set the model to training mode
             train_loss = 0.0
             train_metrics = {'P': 0.0, 'TP': 0.0, 'TPR': 0.0, 'TNR': 0.0, 'ACC': 0.0}
-            for batch_idx, (X_batch, Z_batch) in enumerate(train_loader):
-                Y_batch = cs.encode(X_batch.numpy())    # encode input data
-                Y_batch = torch.from_numpy(Y_batch).float()     # transform measures to tensor data
+            for batch_idx, (Y_batch, Z_batch) in enumerate(train_loader):
                 Y_batch, Z_batch = Y_batch.to(device), Z_batch.to(device)     # move training data to GPU
                 output = tsoc(Y_batch)
                 loss = multiclass_loss_alpha(output, Z_batch)
 
                 train_metrics_batch = compute_metrics(output, Z_batch, th=threshold)
-                if batch_idx == 0:
-                    train_rsnr_batch = rsnr(output, X_batch, Y_batch, threshold).item()
                 optimizer.zero_grad()     # zeroes the gradient buffers of all parameters
                 loss.backward()     # Backpropagate
                 optimizer.step()     # Update weights
@@ -199,22 +186,17 @@ def training(
             num_batches = len(train_loader)
             train_loss = train_loss/num_batches
             train_metrics = {key: value / num_batches for key, value in train_metrics.items()}
-            train_metrics['RSNR'] = train_rsnr_batch
 
             # validation loop
             tsoc.eval()     # Set the model to evaluation mode
             val_loss = 0.0
             val_metrics = {'P': 0.0, 'TP': 0.0, 'TPR': 0.0, 'TNR': 0.0, 'ACC': 0.0}
             with torch.no_grad():     # disables gradient calculation for the validation phase 
-                for batch_idx, (X_batch, Z_batch) in enumerate(val_loader):
-                    Y_batch = cs.encode(X_batch.numpy())    # encode input data
-                    Y_batch = torch.from_numpy(Y_batch).float()     # transform measures to tensor data
-                    Y_batch, Z_batch = Y_batch.to(device), Z_batch.to(device)     # move training data to GPU
+                for batch_idx, (Y_batch, Z_batch) in enumerate(val_loader):
+                    Y_batch, Z_batch = Y_batch.to(device), Z_batch.to(device)     # move validation data to GPU
                     output = tsoc(Y_batch)
                     val_loss += multiclass_loss_alpha(output, Z_batch).item()
                     val_metrics_batch = compute_metrics(output, Z_batch, th=threshold)
-                    if batch_idx == 0:
-                        val_rsnr_batch = rsnr(output, X_batch, Y_batch, threshold).item()
                     val_metrics = update_metrics(val_metrics, val_metrics_batch)
 
             num_batches = len(val_loader)
@@ -232,7 +214,6 @@ def training(
                 print("Early stopping")
                 break
             val_metrics = {key: value / num_batches for key, value in val_metrics.items()}
-            val_metrics['RSNR'] = val_rsnr_batch
 
             print(f"Epoch [{epoch+1}/{epochs}], LR={scheduler.get_last_lr()[0]}\nTRAIN Loss: {np.round(train_loss, 3)}  " +\
                 "  ".join([f'{key}: {np.round(value, 3)}' for key, value in train_metrics.items()])  +\
