@@ -1,5 +1,4 @@
 import os
-import numpy as np
 from spgl1 import spg_bpdn
 from tqdm import tqdm
 import pickle as pkl
@@ -33,12 +32,16 @@ os.environ["CUDA_VISIBLE_DEVICES"]="5"
 
 os.environ['SCIPY_USE_PROPACK'] = "True"
 
-threads = "64"
-os.environ["OMP_NUM_THREADS"] = threads
-os.environ["OPENBLAS_NUM_THREADS"] = threads
-os.environ["MKL_NUM_THREADS"] = threads
-os.environ["VECLIB_MAXIMUM_THREADS"] = threads
-os.environ["NUMEXPR_NUM_THREADS"] = threads
+# limit number of parallel threads numpy spawns
+workers_mp = 1 # number of workers for mp.pool
+threads_np = "1" # number of threads np generates for every worker
+
+os.environ["OMP_NUM_THREADS"] = threads_np
+os.environ["OPENBLAS_NUM_THREADS"] = threads_np
+os.environ["MKL_NUM_THREADS"] = threads_np
+os.environ["VECLIB_MAXIMUM_THREADS"] = threads_np
+os.environ["NUMEXPR_NUM_THREADS"] = threads_np
+import numpy as np
 
 
 
@@ -65,7 +68,7 @@ loc = 0.25 # localization for rakeness
 n_default = 128 # length of ecg
 m_default = 48 # length of compressed ecg
 mode_A_default = 'standard' # A: standard or rakeness
-N_try_A_default = 1_000 # how many A to try
+N_try_A_default = 100 # how many A to try
 N_keep_A_default = 8 # best As to save
 
 seed_A_default = 0
@@ -125,13 +128,15 @@ def cmdline_args():
 
 def main(n, m, mode_A, N_try_A, N_keep_A, seed_A, seed_ecg):
 
-    str_ecg_setting = f'ecg_N={N_ecg}_n={n}_fs={fs}_hr={hr[0]}-{hr[1]}_isnr={isnr}_seed={seed_ecg}'
+    str_ecg_setting = f'ecg_N={N_ecg}_n={n}_fs={fs}_hr={hr[0]}-{hr[1]}'\
+                      f'_isnr={isnr}_seed={seed_ecg}'
+    
     path_ecg = os.path.join(dataset_dir, str_ecg_setting + '.pkl')
-
+    
     str_A_setting = f'sensing_matrix_M={N_try_A}_m={m}_mode={mode_A}_seed={seed_A}'
     if mode_A=='rakeness':
         str_A_setting = str_A_setting + f'_loc={loc}_corr={corr_str}'
-
+    
     save_A_folder = os.path.join(dataset_dir, str_ecg_setting, 'A_Filippo')
     save_A_dest = os.path.join(save_A_folder, str_A_setting+'.pkl')
     print(N_ecg)
@@ -140,15 +145,13 @@ def main(n, m, mode_A, N_try_A, N_keep_A, seed_A, seed_ecg):
     path_corr = os.path.join(dataset_dir, 'correlation', corr_str + '.pkl')
 
     with open(path_ecg, 'rb') as f:
-        ecg = pkl.load(f)[:, np.newaxis]
+        ecg = pkl.load(f)[:1000, np.newaxis]
     with open(path_corr, 'rb') as f:
         corr = pkl.load(f)
 
     D = wavelet_basis(n, 'sym6', level=2)
 
     keep_A = {}
-
-    pool = mp.Pool(processes=20)
 
 
     best_rsnr = np.array([-1000 - i for i in range(N_keep_A)], dtype=np.float64)
@@ -171,8 +174,9 @@ def main(n, m, mode_A, N_try_A, N_keep_A, seed_A, seed_ecg):
         
         B = A_trial @ D
 
-        rsnr = pool.starmap(enc_dec_bpdn, 
-                            it.product([A_trial],[D],[B],ecg[:, 0, :]))
+        with mp.Pool(processes=workers_mp) as pool:
+            rsnr = pool.starmap(enc_dec_bpdn, 
+                                it.product([A_trial],[D],[B],ecg[:, 0, :]))
                     
         rsnr = np.mean(rsnr)
         if rsnr>np.min(best_rsnr):
@@ -183,9 +187,6 @@ def main(n, m, mode_A, N_try_A, N_keep_A, seed_A, seed_ecg):
 
 
         print(f'[{i}/{N_try_A-1}] rsnr={np.round(rsnr, 8)} --- best: {[np.round(i, 2) for i in best_rsnr]}')
-    
-    pool.close()
-    pool.join() 
 
     srt = np.argsort(best_rsnr)
     best_rsnr, seed_A_best, keep_A = best_rsnr[srt][::-1], seed_A_best[srt][::-1], keep_A[srt][::-1]
