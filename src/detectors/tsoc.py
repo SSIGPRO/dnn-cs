@@ -57,21 +57,28 @@ class TSOCDetector(Detector):
         # calculate supports
         Zhat = O > self.threshold
 
-        # reconstruct data
-        Xhat = np.empty(X_test.shape)
-        for i in range(X_test.shape[0]):
-            Xhat[i] = self.cs.decode_with_support(Y[i], Zhat[i])
+        if self.mode == 'sparsity':
+            score = np.mean(O, axis=-1)
 
-        if self.mode=='autoencoder':
-            # estiamte the difference between the reconstructed data and data
-            score = np.sqrt(np.sum((Xhat - X_test)**2, axis = -1))
-        
-        elif self.mode=='self-assessment':
-            # encode reconstructed test data
-            Yhat = self.cs.encode(Xhat)
+        elif self.mode == 'sparsity-threshold':
+            score = np.mean(Zhat, axis=-1)
 
-            # estiamte the difference between the encoded reconstructed data and encoded data 
-            score = np.sqrt(np.sum((Yhat - Y)**2, axis = -1))
+        elif self.mode in ['autoencoder', 'self-assessment']:
+            # reconstruct data
+            Xhat = np.empty(X_test.shape)
+            for i in range(X_test.shape[0]):
+                Xhat[i] = self.cs.decode_with_support(Y[i], Zhat[i])
+
+            if self.mode=='autoencoder':
+                # estiamte the difference between the reconstructed data and data
+                score = np.sqrt(np.sum((Xhat - X_test)**2, axis = -1))
+            
+            elif self.mode=='self-assessment':
+                # encode reconstructed test data
+                Yhat = self.cs.encode(Xhat)
+
+                # estiamte the difference between the encoded reconstructed data and encoded data 
+                score = np.sqrt(np.sum((Yhat - Y)**2, axis = -1))
 
         else:
             raise ValueError(f'mode "{self.mode}" not supported')
