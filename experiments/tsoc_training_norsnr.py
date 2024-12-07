@@ -202,7 +202,7 @@ def training(
             num_batches = len(val_loader)
             val_loss = val_loss/num_batches
             # callbacks
-            # early stopping
+            # reduce lr on plateau
             scheduler.step(val_loss)
             # early stopping
             if val_loss < min_val_loss - min_delta:
@@ -215,10 +215,10 @@ def training(
                 break
             val_metrics = {key: value / num_batches for key, value in val_metrics.items()}
 
-            print(f"Epoch [{epoch+1}/{epochs}], LR={scheduler.get_last_lr()[0]}\nTRAIN Loss: {np.round(train_loss, 3)}  " +\
-                "  ".join([f'{key}: {np.round(value, 3)}' for key, value in train_metrics.items()])  +\
-                    f"\n  VAL Loss: {np.round(val_loss, 3)}  " +\
-                        "  ".join([f'{key}: {np.round(value, 3)}' for key, value in val_metrics.items()]) + "\n") 
+            print(f"Epoch [{epoch+1}/{epochs}], LR={scheduler.get_last_lr()[0]}\nTRAIN Loss: {np.round(train_loss, 5)}  " +\
+                "  ".join([f'{key}: {np.round(value, 4)}' for key, value in train_metrics.items()])  +\
+                    f"\n  VAL Loss: {np.round(val_loss, 4)}  " +\
+                        "  ".join([f'{key}: {np.round(value, 4)}' for key, value in val_metrics.items()]) + "\n") 
 
         # save trained model
         # ensure the directories exists
