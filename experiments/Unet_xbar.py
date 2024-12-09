@@ -9,7 +9,8 @@ import time
 import logging
 import argparse
 import warnings
- 
+from datetime import datetime
+
 import os
 import pickle as pkl
 
@@ -231,6 +232,7 @@ def cmdline_args():
         '--lr', type=float, default=lr_default,
         help="learning rate for the training (default: %(default)s)",
     )
+    
 
     #### HARDWARE PARAMETERS ####
 
@@ -288,8 +290,12 @@ def main(N,
          str_retrain, 
          str_resume_train, 
          batch_size,
-         lr):
+         lr,):
     
+    now = datetime.now()
+    current_time = now.strftime("%H:%M:%S")
+    print(f"Current Time = {current_time}\n")
+
     [print(f"{k}: {v}") for k, v in locals().items()];
 
     os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
@@ -432,7 +438,7 @@ def main(N,
     ################# MODEL #################
 
     model = UNet(in_channels=in_channels, 
-                 num_classes=_out_channels,
+                 out_channels=_out_channels,
                  expanded_channels=expanded_channels, 
                  steps_num=step_number, 
                  kernel_size=kernel_size,
@@ -504,7 +510,8 @@ def main(N,
         print(f'Epoch [{epoch}/{num_epochs}], ' 
               f'Train Loss: {train_loss:.6f}, '
               f'Val Loss: {val_loss:.6f}, SNR: {snr_:.2f} -- '
-              f'lr: {last_lr}')
+              f'lr: {last_lr} -- '
+              f"time: {datetime.now()}")
 
         ##### CALLBACKS
         # Early stop
@@ -517,6 +524,7 @@ def main(N,
                 patience_counter[k] = 0 
 
             torch.save(model.state_dict(), path_model)
+
             print('Saving model: validation loss improved')
         
         else:
@@ -600,4 +608,4 @@ if __name__ == '__main__':
         args.str_resume_train,
         args.batch_size,
         args.lr,
-    )
+        )

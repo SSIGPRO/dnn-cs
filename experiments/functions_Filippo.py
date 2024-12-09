@@ -73,6 +73,8 @@ def x_to_dataset(x, A, xbar_index=[1],
         d_outputs['xbarT'] = A.T @ y
     if 2 in xbar_index:
         d_outputs['xbarPinv'] = np.linalg.pinv(A) @ y
+    # if 3 in xbar_index:
+    #     d_outputs['xbar0Padding'] = np.pad(y, )
 
     if x.shape[-1] == 1:
         d_outputs = {k: np.swapaxes(v, -1, -2) for k, v in d_outputs.items()}

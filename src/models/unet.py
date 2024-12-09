@@ -178,16 +178,16 @@ class UpSeq(nn.Module):
         return x
 
 class UNet(nn.Module):
-    def __init__(self, in_channels, num_classes, expanded_channels, 
+    def __init__(self, in_channels, out_channels, expanded_channels, 
                  steps_num=4, kernel_size=3, simple_pool=True,
                  use_batch_norm=False, residual=False):
         super().__init__()
 
         self.residual = residual
-        if residual:
-            assert in_channels == num_classes, 'if "residual==True", must have "in_channels==num_classes"'
-
-        padding = kernel_size // 2
+        self.out_channels = out_channels
+        self.in_channels = in_channels
+        # if residual:
+        #     assert in_channels == out_channels, 'if "residual==True", must have "in_channels==num_classes"'
 
         self.down = DownSeq(
             in_channels=in_channels,
@@ -206,7 +206,9 @@ class UNet(nn.Module):
               steps_num=steps_num,
                use_batch_norm=use_batch_norm,)
 
-        self.out = nn.Conv1d(in_channels=expanded_channels, out_channels=num_classes, kernel_size=1)
+        self.out = nn.Conv1d(in_channels=expanded_channels, out_channels=in_channels, kernel_size=1)
+        if self.out_channels != self.in_channels:
+            self.out2 = nn.Conv1d(in_channels=expanded_channels, out_channels=out_channels, kernel_size=1)
 
     def forward(self, x_input):
 
@@ -220,5 +222,8 @@ class UNet(nn.Module):
 
         if self.residual:
             x = x_input - x
+
+        if self.out_channels != self.in_channels:
+            x = self.out2(x)
 
         return x
