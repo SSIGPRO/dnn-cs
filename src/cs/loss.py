@@ -45,6 +45,7 @@ def multiclass_loss_alpha(y_pred, y_true, alpha=0.5, reduce=True):
     
     # Compute the loss
     loss = -(1 - alpha) * (1 - y_true) * torch.log(1 - y_pred) - alpha * y_true * torch.log(y_pred)
+    loss = torch.mean(loss, dim=-1)
     if reduce:
         loss = torch.mean(loss)
     return loss
