@@ -151,27 +151,26 @@
 ################################################################################
 
 # # Parameters of the training data
-# N_train=10000 # Number of ECG training examples
+# N_train=2000000 # Number of ECG training examples
 # n=128           # Length of each ECG signal
 # fs=256          # Sampling frequency
 # heart_rate=(60 100) # Heart rate range
 # isnr=35         # Intrinsic signal-to-noise ratio
-# ecg_seed=66     # Random seed for data generation
+# ecg_seed=11     # Random seed for data generation
 # processes=4     # Number of parallel processes
 
 # # Parameters of the support of the training data
 # # m=48
 # # m_list=(16 32 48 64)
-# m_list=(48)
+# m_list=(32)
 # corr=96af96a7ddfcb2f6059092c250e18f2a
 # loc=0.25
-# # encoder="rakeness"
-# source='random'    # Whether to use best or random sensing matrix
-# seed_list=(0)          # "Random" seed for sensing matrix generation or index of the "best" sensing matrix according to "source"
-# # source='best'
-# # seed_list=(0 1 2 3 4 5 6 7)
+# encoder="rakeness"
+# # seed=0         # "Random" seed for sensing matrix generation or index of the "best" sensing matrix according to "source"
+# source='best'
+# seed_list=(0 1 2 3 4 5 6 7)
 # algorithm="TSOC"
-# # orthogonal=True
+# orthogonal=True
 
 # python ./experiments/generate_ecg.py \
 #     --size $N_train \
@@ -225,11 +224,11 @@
 
 # m=48                # Number of measurements
 # # m_list=(16 32 48 64)
-# m_list=(48)
+# m_list=(32)
 # # seed_training=1     # Training-related random seed for reproducibility
 # seed_training_list=(0 1 2 3)
 # mode="rakeness"     # Encoder mode, change to 'rakeness' if needed
-# gpu=0               # GPU index
+# gpu=5               # GPU index
 
 # # optimizer="sgd"    # Optimizer for training
 # # lr=0.1              # Learning rate
@@ -238,13 +237,14 @@
 
 # optimizer="adam"    # Optimizer for training
 # lr=0.001            # Learning rate
-# batch_size=32       # Batch size for training
+# batch_size=128      # Batch size for training
 # min_lr=0.00001      # Minimum learning rate
 
 # orthogonal=True     # Whether to use orthogonalized matrix
 # source='best'       # Whether to use best or random matrix
 # # seed_matrix=0       # Index or seed of the best or random matrix, respectivelly
-# seed_matrix_list=(2 3)
+# # seed_matrix_list=(0 1 2 3)
+# seed_matrix_list=(3)
 
 # train_fraction=0.9  # Fraction of data used for training
 # factor=0.2          # Factor for ReduceLROnPlateau scheduler
@@ -306,7 +306,7 @@
 # done
 
 ##############################################################################
-# TSOC Reconstruction Performanve Evaluation for Multiple Configurations     #
+# TSOC Reconstruction Performance Evaluation for Multiple Configurations     #
 ##############################################################################
 
 # # Core parameters
@@ -533,13 +533,15 @@ orthogonal=True     # Whether to use orthogonalized measurement matrix
 detector_type="OCSVM"  # Detector type to evaluate (e.g., TSOC, SPE, OCSVM)
 # delta=0.05           # Anomaly intensity parameter
 # delta_list=(0.01 0.02 0.05 0.1 0.2 0.5)
-# delta_list=(0.8 0.001 0.002 0.005 0.01 0.02 0.05 0.1 0.2 0.5)
-delta_list=(0.8 0.001 0.002 0.005)
+delta_list=(0.8 0.001 0.002 0.005 0.01 0.02 0.05 0.1 0.2 0.5)
+# delta_list=(0.8 0.001 0.002 0.005)
+# delta_list=(0.8)
 source='best'       # Whether to use best or random matrix
 
 # TSOC-specific configuration
 # detector_mode="self-assessment"  # Mode of operation for TSOC
-detector_mode="autoencoder"
+# detector_mode='self-assessment', 'autoencoder', 'sparsity', 'sparsity-threshold', 'self-assessment-complement', 'complement'
+detector_mode="self-assessment-complement"
 factor=0.2                # Augmentation/scheduling factor
 
 min_delta=1e-5            # Minimum change in monitored metric for early stopping
@@ -560,7 +562,8 @@ k=5
 # Order parameter for AR detector:                       
 order=1
 # Parameters for OCSVM:                 
-kernel="rbf"              
+# kernel="rbf"    
+kernel="poly"          
 nu=0.5                    
 # Number of neighbors for LOF detector
 neighbors=10

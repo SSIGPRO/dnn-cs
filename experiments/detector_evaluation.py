@@ -311,7 +311,9 @@ def parse_args():
     parser.add_argument('-g', '--gpu', type=int, default=3, help="GPU index to use for evaluation")
 
     # TSOC-related arguments
-    parser.add_argument('-dmd', '--detector_mode', type=str, choices=['self-assessment', 'autoencoder'], help="Mode of operation of TSOC-based detector")
+    parser.add_argument('-dmd', '--detector_mode', type=str,
+                         choices=['self-assessment', 'autoencoder', 'sparsity', 'sparsity-threshold', 'self-assessment-complement', 'complement'],
+                         help="Mode of operation of TSOC-based detector")
     parser.add_argument('-fct', '--factor', type=float, default=0.2, help="Factor for augmentation or scheduling")
     parser.add_argument('-minlr', '--min_lr', type=float, default=0.001, help="Minimum learning rate for optimizers")
     parser.add_argument('-mind', '--min_delta', type=float, default=1e-4, help="Minimum change in monitored metric for early stopping")
