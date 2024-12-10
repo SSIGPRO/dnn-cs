@@ -1,6 +1,7 @@
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 import numpy as np
+from scipy import linalg
 from cs.wavelet_basis import wavelet_basis
 from cs.utils import reconstructor
 from cs import CompressedSensing, generate_sensing_matrix
@@ -63,7 +64,7 @@ class TSOCDetector(Detector):
         elif self.mode == 'sparsity-threshold':
             score = np.mean(Zhat, axis=-1)
 
-        elif self.mode in ['autoencoder', 'self-assessment']:
+        elif self.mode in ['autoencoder', 'self-assessment', 'self-assessment-complement', 'complement']:
             # reconstruct data
             Xhat = np.empty(X_test.shape)
             for i in range(X_test.shape[0]):
@@ -72,13 +73,27 @@ class TSOCDetector(Detector):
             if self.mode=='autoencoder':
                 # estiamte the difference between the reconstructed data and data
                 score = np.sqrt(np.sum((Xhat - X_test)**2, axis = -1))
-            
+
             elif self.mode=='self-assessment':
                 # encode reconstructed test data
                 Yhat = self.cs.encode(Xhat)
-
                 # estiamte the difference between the encoded reconstructed data and encoded data 
                 score = np.sqrt(np.sum((Yhat - Y)**2, axis = -1))
+
+            elif 'complement' in self.mode:
+                # find the orthogonal complement of A
+                AI = np.concatenate([self.cs.A, np.eye(self.n)])
+                AI = linalg.orth(AI.T).T
+                Ac = AI[self.m:self.n, :]
+
+                # estimate the energy along the complement
+                Ybar = Xhat @ Ac.T
+                score = np.sum(Ybar**2, axis = -1)
+            
+                if self.mode=='self-assessment-complement':
+                    Yhat = self.cs.encode(Xhat)
+                    # combine two scores
+                    score = score + np.sum((Yhat - Y)**2, axis = -1) 
 
         else:
             raise ValueError(f'mode "{self.mode}" not supported')
