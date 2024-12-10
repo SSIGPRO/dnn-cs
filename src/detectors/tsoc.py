@@ -82,9 +82,8 @@ class TSOCDetector(Detector):
 
             elif 'complement' in self.mode:
                 # find the orthogonal complement of A
-                AI = np.concatenate([self.cs.A, np.eye(self.n)])
-                AI = linalg.orth(AI.T).T
-                Ac = AI[self.m:self.n, :]
+                Q, _ = np.linalg.qr(self.cs.A.T, mode='complete')
+                Ac = Q[:, self.m:].T
 
                 # estimate the energy along the complement
                 Ybar = Xhat @ Ac.T
