@@ -87,12 +87,12 @@ class TSOCDetector(Detector):
 
                 # estimate the energy along the complement
                 Ybar = Xhat @ Ac.T
-                score = np.sum(Ybar**2, axis = -1)
+                score = np.mean(Ybar**2, axis = -1)
             
                 if self.mode=='self-assessment-complement':
                     Yhat = self.cs.encode(Xhat)
                     # combine two scores
-                    score = score + np.sum((Yhat - Y)**2, axis = -1) 
+                    score = score + np.mean((Yhat - Y)**2, axis = -1) 
 
         else:
             raise ValueError(f'mode "{self.mode}" not supported')
