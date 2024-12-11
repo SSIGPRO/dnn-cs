@@ -25,7 +25,7 @@ logging.basicConfig(level=logging.DEBUG)
 
 def training(
     n, m, epochs, lr, opt, batch_size, N, basis, fs, heart_rate, isnr, mode, 
-    orthogonal, source, seed_matrix, seed_training, processes, threshold, gpu, train_fraction, factor, 
+    orthogonal, source, seed_matrix, alpha, seed_training, processes, threshold, gpu, train_fraction, factor, 
     min_lr, min_delta, patience
 ):
 
@@ -36,7 +36,10 @@ def training(
     seed_data = 11 # seed relative to training datas
     seed_data_matrix = 0 # seed used to generate data for sensing matrix selection
     seed_selection = 0 # seed used to select the best sensing matrix on data geneerated with seed_data_matrix
-    M = 1_000 # number of evaluated sensing matrices
+    if m==48:
+        M = 1_000 # number of evaluated sensing matrices
+    else:
+        M = 100
     loc = 0.25
 
     # ------------------ Folders ------------------
@@ -45,7 +48,7 @@ def training(
     # ------------------ Show parameter values ------------------
     params = locals()
     params_str = ", ".join(f"{key}={value}" for key, value in params.items())
-    logging.info(f"Running test with parameters: {params_str}")
+    logging.info(f"Running training with parameters: {params_str}")
 
     
     # ------------------ Reproducibility ------------------
@@ -141,15 +144,17 @@ def training(
     tsoc = TSOC(n, m)
     tsoc.to(device) # move the network to GPU
     model_name = f'TSOC-N={N}_n={n}_m={m}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}'\
-                f'_isnr={isnr}_mode={mode}_src={source}_ort={orthogonal}_seedmat={seed_matrix}'\
-                f'_epochs={epochs}_bs={batch_size}_opt={opt}_lr={lr}'\
-                f'_th={threshold}_tf={train_fraction}_minlr={min_lr}_p={patience}'\
-                f'_mind={min_delta}_seeddata={seed_data}_seedtrain={seed_training}'    
+                 f'_isnr={isnr}_mode={mode}_src={source}_ort={orthogonal}_seedmat={seed_matrix}'
+    model_name = f'{model_name}_epochs={epochs}_bs={batch_size}_opt={opt}_lr={lr}'\
+                 f'_th={threshold}_tf={train_fraction}_minlr={min_lr}_p={patience}'\
+                 f'_mind={min_delta}_seeddata={seed_data}_seedtrain={seed_training}'    
     if mode == 'rakeness':
         model_name = f'{model_name}_corr={corr_name}_loc={loc}'
-    model_path = os.path.join(model_folder, f'{model_name}.pth')
+    model_path = os.path.join(model_folder, f'alpha={alpha}', f'{model_name}.pth')
 
     # ------------------ Trining loop ------------------
+    # ensure the directories exists
+    os.makedirs(os.path.dirname(model_path), exist_ok=True)
     if os.path.exists(model_path):
         print(f'Model\n{model_name}\nhas already been trained')
         sys.exit(0)
@@ -170,7 +175,7 @@ def training(
             for batch_idx, (Y_batch, Z_batch) in enumerate(train_loader):
                 Y_batch, Z_batch = Y_batch.to(device), Z_batch.to(device)     # move training data to GPU
                 output = tsoc(Y_batch)
-                loss = multiclass_loss_alpha(output, Z_batch)
+                loss = multiclass_loss_alpha(output, Z_batch, alpha)
 
                 train_metrics_batch = compute_metrics(output, Z_batch, th=threshold)
                 optimizer.zero_grad()     # zeroes the gradient buffers of all parameters
@@ -195,7 +200,7 @@ def training(
                 for batch_idx, (Y_batch, Z_batch) in enumerate(val_loader):
                     Y_batch, Z_batch = Y_batch.to(device), Z_batch.to(device)     # move validation data to GPU
                     output = tsoc(Y_batch)
-                    val_loss += multiclass_loss_alpha(output, Z_batch).item()
+                    val_loss += multiclass_loss_alpha(output, Z_batch, alpha).item()
                     val_metrics_batch = compute_metrics(output, Z_batch, th=threshold)
                     val_metrics = update_metrics(val_metrics, val_metrics_batch)
 
@@ -216,13 +221,11 @@ def training(
             val_metrics = {key: value / num_batches for key, value in val_metrics.items()}
 
             print(f"Epoch [{epoch+1}/{epochs}], LR={scheduler.get_last_lr()[0]}\nTRAIN Loss: {np.round(train_loss, 5)}  " +\
-                "  ".join([f'{key}: {np.round(value, 4)}' for key, value in train_metrics.items()])  +\
-                    f"\n  VAL Loss: {np.round(val_loss, 4)}  " +\
-                        "  ".join([f'{key}: {np.round(value, 4)}' for key, value in val_metrics.items()]) + "\n") 
+                "  ".join([f'{key}: {np.round(value, 5)}' for key, value in train_metrics.items()])  +\
+                    f"\n  VAL Loss: {np.round(val_loss, 5)}  " +\
+                        "  ".join([f'{key}: {np.round(value, 5)}' for key, value in val_metrics.items()]) + "\n") 
 
         # save trained model
-        # ensure the directories exists
-        os.makedirs(os.path.dirname(model_path), exist_ok=True)
         torch.save(tsoc.state_dict(), model_path)
 
 # ------------------ Perser definition ------------------
@@ -236,6 +239,7 @@ def parse_args():
     parser.add_argument('--mode', '-M', type=str, choices=['standard', 'rakeness'], required=True, help="Measurement matrix mode: 'standard' or 'rakeness'")
     parser.add_argument('--seed_training', '-s', type=int, required=True, help="Training-related random seed for reproducibility")
     parser.add_argument('--seed_matrix', '-S', type=int, required=True, help="Seed for random or index for (one of) the best Measurement matrix")
+    parser.add_argument('--alpha', '-a', type=float, default=0.5, help="Training loss weight")
     parser.add_argument('--epochs', '-e', type=int, default=500, help="Number of training epochs")
     parser.add_argument('--lr', '-l', type=float, default=0.1, help="Learning rate")
     parser.add_argument('--batch_size', '-b', type=int, default=50, help="Batch size for training")
@@ -279,6 +283,7 @@ if __name__ == '__main__':
         orthogonal=args.orthogonal,
         source=args.source,
         seed_matrix=args.seed_matrix,
+        alpha = args.alpha,
         seed_training=args.seed_training,
         processes=args.processes,
         threshold=args.threshold,
