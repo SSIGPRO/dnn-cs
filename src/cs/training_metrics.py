@@ -63,7 +63,7 @@ def accuracy(output, z_true, th=0.5, reduce=True):
     # Return accuracy
     return ACC
 
-def rsnr(x_pred, x_true, reduce=False):
+def rsnr(x_pred, x_true, reduce=True):
     ''' Compute Reconstruction Signal-to-Noise Ratio '''
     norm_signal = torch.norm(x_true, dim=-1)
     norm_noise = torch.norm(x_true - x_pred, dim=-1)
