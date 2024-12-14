@@ -35,6 +35,7 @@ from dataset import dataset_dir
 from cs.wavelet_basis import wavelet_basis
 from cs import CompressedSensing, generate_sensing_matrix
 from detectors.tsoc import TSOCDetector
+from detectors.ae import AEDetector
 from detectors import detectors_dir
 from models import models_dir
 
@@ -43,7 +44,7 @@ logging.basicConfig(level=logging.DEBUG)
 
 def test(
     n, m, epochs, lr, batch_size, N_train, basis, fs, heart_rate, isnr, mode, 
-    orthogonal, source, seed_matrix, seed_detector, seed_ko, processes, threshold, gpu, train_fraction, factor, min_lr, 
+    orthogonal, source, seed_matrix, seed_detector, seed_ko, processes, threshold, gpu, train_fraction, factor, alpha, min_lr, 
     min_delta, patience, opt, detector_type, delta, N_test, detector_mode, 
     k, order, kernel, nu, neighbors, estimators
 ):
@@ -58,7 +59,7 @@ def test(
     loc = 0.25
 
     # ------------------ Folders ------------------
-    model_folder = f'{models_dir}TSOC'
+    model_folder = f'{models_dir}{detector_type}'
     results_folder = '/srv/newpenny/dnn-cs/tsoc/results/TSOC/detection'
 
     # ------------------ Show parameter values ------------------
@@ -119,23 +120,68 @@ def test(
     #
     standard_detectors = ['SPE', 'T2', 'AR', 'OCSVM', 'LOF', 'IF', 'MD', 'energy', 'TV', 'ZC', 'pk-pk']
 
+    # # evaluate TSOC-based detector
+    # if 'TSOC' in detector_type:
+    #     model_name = f'TSOC-N={N_train}_n={n}_m={m}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}'\
+    #                  f'_isnr={isnr}_mode={mode}_src={source}_ort={orthogonal}_seedmat={seed_matrix}'\
+    #                  f'_epochs={epochs}_bs={batch_size}_opt={opt}_lr={lr}'\
+    #                  f'_th={threshold}_tf={train_fraction}_minlr={min_lr}_p={patience}'\
+    #                  f'_mind={min_delta}_seeddata={seed_train_data}_seedtrain={seed_training}'
+    #     file_name = f'AUC_detector={model_name}_delta={delta}_seedko={seed_ko}.pkl'
+    #     subfolder = f'TSOC_{mode}'   
+    #     if mode == 'rakeness':
+    #         model_name = f'{model_name}_corr={corr_name}_loc={loc}'
+    #         subfolder = f'{subfolder}_corr={corr_name}_loc={loc}'
+
+    #     model_path = os.path.join(model_folder, f'alpha={alpha}', f'{model_name}.pth')
+    #     results_path = os.path.join(results_folder, subfolder, f'alpha={alpha}', detector_mode, file_name)
+
+    #     detector = TSOCDetector(cs, model_path, mode=detector_mode, threshold=threshold, gpu=device)
+    #     detector_label = model_name
+    #     detector = detector.fit()
+
+    # # evaluate AE-based detector
+    # elif 'AE' in detector_type:
+    #     model_name = f'AE-N={N_train}_n={n}_m={m}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}'\
+    #                  f'_isnr={isnr}_mode={mode}_src={source}_ort={orthogonal}_seedmat={seed_matrix}'\
+    #                  f'_epochs={epochs}_bs={batch_size}_opt={opt}_lr={lr}'\
+    #                  f'_tf={train_fraction}_minlr={min_lr}_p={patience}'\
+    #                  f'_mind={min_delta}_seeddata={seed_train_data}_seedtrain={seed_training}'
+    #     file_name = f'AUC_detector={model_name}_delta={delta}_seedko={seed_ko}.pkl'
+    #     subfolder = f'AE_{mode}'      
+    #     if mode == 'rakeness':
+    #         model_name = f'{model_name}_corr={corr_name}_loc={loc}'
+    #         subfolder = f'{subfolder}_corr={corr_name}_loc={loc}'
+
+    #     model_path = os.path.join(model_folder, f'{model_name}.pth')
+    #     results_path = os.path.join(results_folder, subfolder, detector_mode, file_name)
+
+    #     detector = AEDetector(cs, model_path, mode=detector_mode, gpu=device)
+    #     detector_label = model_name
+    #     detector = detector.fit()
+
     # evaluate TSOC-based detector
-    if 'TSOC' in detector_type:
-        model_name = f'TSOC-N={N_train}_n={n}_m={m}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}'\
-                f'_isnr={isnr}_mode={mode}_src={source}_ort={orthogonal}_seedmat={seed_matrix}'\
-                f'_epochs={epochs}_bs={batch_size}_opt={opt}_lr={lr}'\
-                f'_th={threshold}_tf={train_fraction}_minlr={min_lr}_p={patience}'\
-                f'_mind={min_delta}_seeddata={seed_train_data}_seedtrain={seed_training}'
+    if detector_type in ['TSOC', 'AE']:
+        th_string = '_th={threshold}' if detector_type == 'TSOC' else ''
+        alpha_string = f'alpha={alpha}' if detector_type == 'TSOC' else ''
+        model_name = f'{detector_type}-N={N_train}_n={n}_m={m}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}'\
+                     f'_isnr={isnr}_mode={mode}_src={source}_ort={orthogonal}_seedmat={seed_matrix}'\
+                     f'_epochs={epochs}_bs={batch_size}_opt={opt}_lr={lr}'\
+                     f'{th_string}_tf={train_fraction}_minlr={min_lr}_p={patience}'\
+                     f'_mind={min_delta}_seeddata={seed_train_data}_seedtrain={seed_training}'
         file_name = f'AUC_detector={model_name}_delta={delta}_seedko={seed_ko}.pkl'
-        subfolder = f'TSOC_{mode}'   
+        subfolder = f'{detector_type}_{mode}'   
         if mode == 'rakeness':
             model_name = f'{model_name}_corr={corr_name}_loc={loc}'
             subfolder = f'{subfolder}_corr={corr_name}_loc={loc}'
 
-        model_path = os.path.join(model_folder, f'{model_name}.pth')
-        results_path = os.path.join(results_folder, subfolder, detector_mode, file_name)
+        model_path = os.path.join(model_folder, alpha_string, f'{model_name}.pth')
+        results_path = os.path.join(results_folder, subfolder, alpha_string, detector_mode, file_name)
 
-        detector = TSOCDetector(cs, model_path, mode=detector_mode, threshold=threshold, gpu=device)
+        if detector_type == 'TSOC':
+            detector = TSOCDetector(cs, model_path, mode=detector_mode, threshold=threshold, gpu=device)
+        else:
+            detector = AEDetector(cs, model_path, mode=detector_mode, gpu=device)
         detector_label = model_name
         detector = detector.fit()
         
@@ -276,7 +322,7 @@ def test(
     for anomaly_label in tqdm.tqdm(anomalies_labels):
         # define the anomalous dataset
         Xko = Xko_df[anomaly_label].values
-        if 'TSOC' in detector_type:
+        if detector_type in ['TSOC', 'AE'] :
             Zanom = np.concatenate([X, Xko])
         elif detector_type in standard_detectors:
             Yko = cs.encode(Xko)
@@ -310,19 +356,21 @@ def parse_args():
     parser.add_argument('-p', '--processes', type=int, default=48, help="Number of CPU processes")
     parser.add_argument('-g', '--gpu', type=int, default=3, help="GPU index to use for evaluation")
 
-    # TSOC-related arguments
+    # AE/TSOC-related arguments
     parser.add_argument('-dmd', '--detector_mode', type=str,
                          choices=['self-assessment', 'autoencoder', 'sparsity', 'sparsity-threshold', 'self-assessment-complement', 'complement'],
-                         help="Mode of operation of TSOC-based detector")
+                         help="Mode of operation of AE/TSOC-based detector")
     parser.add_argument('-fct', '--factor', type=float, default=0.2, help="Factor for augmentation or scheduling")
     parser.add_argument('-minlr', '--min_lr', type=float, default=0.001, help="Minimum learning rate for optimizers")
     parser.add_argument('-mind', '--min_delta', type=float, default=1e-4, help="Minimum change in monitored metric for early stopping")
     parser.add_argument('-pt', '--patience', type=int, default=40, help="Patience for early stopping in epochs")
     parser.add_argument('-b', '--batch_size', type=int, default=50, help="Batch size for training")
-    parser.add_argument('-t', '--threshold', type=float, default=0.5, help="Threshold for TSOC detector")
     parser.add_argument('-e', '--epochs', type=int, default=500, help="Number of training epochs")
     parser.add_argument('-l', '--lr', type=float, default=0.1, help="Learning rate")
     parser.add_argument('--optimizer', '-O', type=str, default='adam', help="Optimizer used for training")
+    # TSOC-related arguments  
+    parser.add_argument('-t', '--threshold', type=float, default=0.5, help="Threshold for TSOC detector")
+    parser.add_argument('-a', '--alpha', type=float, default=0.5, help="Training loss weight for TSOC detector")
 
     # Standard detector-related arguments (optional for specific detectors)
     parser.add_argument('-Ss', '--seed_detector', type=int, default=0, help="Random seed associated to the detector")
@@ -365,6 +413,7 @@ if __name__ == "__main__":
         gpu=args.gpu,
         train_fraction=args.train_fraction,
         factor=args.factor,
+        alpha=args.alpha,
         min_lr=args.min_lr,
         min_delta=args.min_delta,
         patience=args.patience,
