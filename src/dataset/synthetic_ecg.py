@@ -114,7 +114,7 @@ def generate_ecg(
         X = np.stack(X)
 
     if snr is not None:
-        X = add_noise(X, snr=snr)
+        X = add_noise(X, snr=snr, seed=seed)
 
     return X
 
