@@ -138,18 +138,34 @@ def test(
         detector = pk_pk()
         detector_label = detector_type
 
-    if detector_type not in ['LOF', 'OCSVM', 'IF']:
-        detector = make_pipeline(
-                    StandardScaler(with_std=False),
-                    detector
-                    )
-        
-     # fit the detector
-    model_name = f'{detector_label}_N={N_train}_n={n}_m={m}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}'\
+    # define the name sufix
+    name = f'N={N_train}_n={n}_m={m}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}'\
                 f'_isnr={isnr}_mode={mode}_src={source}_ort={orthogonal}_seedmat={seed_matrix}_tf={train_fraction}_seeddet={seed_detector}'\
                 f'_seeddata={seed_train_data}_seedtrain={seed_training}'
     if mode == 'rakeness':
-        model_name = f'{model_name}_corr={corr_name}_loc={loc}'
+        name = f'{name}_corr={corr_name}_loc={loc}'
+
+    # scale the data for non-machine learning-based detectors
+    if detector_type not in ['LOF', 'OCSVM', 'IF']:
+        scaler_name = f'scaler_{name}'
+        scaler_path = os.path.join(detectors_dir, f'{scaler_name}.pkl')
+        # load scaler
+        if os.path.exists(scaler_path):
+            print(f'scaler already trained')
+            with open(scaler_path, 'rb') as f:
+                scaler = pickle.load(f)
+        else:
+            # train scaler
+            scaler = StandardScaler(with_std=False).fit(Y_train)
+            # save scaler
+            with open(scaler_path,'wb') as f:
+                pickle.dump(scaler, f)
+        
+        # center training data
+        Y_train = scaler.transform(Y_train)
+        
+    # fit the detector
+    model_name = f'{detector_label}_{name}'
     model_path = os.path.join(detectors_dir, f'{model_name}.pkl')
     # stop if already trained
     if os.path.exists(model_path):
