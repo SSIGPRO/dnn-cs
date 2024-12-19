@@ -35,7 +35,7 @@ from dataset import dataset_dir
 from cs.wavelet_basis import wavelet_basis
 from cs import CompressedSensing, generate_sensing_matrix
 from detectors.tsoc import TSOCDetector
-from detectors.ae import AEDetector
+from detectors.NNdecoder import NNdecoderDetector
 from detectors import detectors_dir
 from models import models_dir
 
@@ -181,7 +181,7 @@ def test(
         if detector_type == 'TSOC':
             detector = TSOCDetector(cs, model_path, mode=detector_mode, threshold=threshold, gpu=device)
         else:
-            detector = AEDetector(cs, model_path, mode=detector_mode, gpu=device)
+            detector = NNdecoderDetector(cs, model_path, mode=detector_mode, gpu=device)
         detector_label = model_name
         detector = detector.fit()
         
