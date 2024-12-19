@@ -223,7 +223,7 @@ def main(N, isnr, method, mode, source, orth, m, corr, loc, ecg_seed, seed, eta_
             logger.info(f'supports {supports_path(seed)} already exists')
             return
         
-        cs = CompressedSensing(A, D)
+        cs = CompressedSensing(A, D=D, decoder='SO')
         
         if method == 'TSOC':
             find_support = find_support_TSOC

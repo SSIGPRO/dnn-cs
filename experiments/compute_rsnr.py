@@ -220,7 +220,7 @@ def main(
             if mode == 'rakeness':
                 kwargs = {**kwargs, 'correlation': C, 'loc': loc}
             A = generate_sensing_matrix((m, n), **kwargs)
-            cs = CompressedSensing(A, D)
+            cs = CompressedSensing(A, D, decoder='SO', processes=processes)
 
             # Compute measurements
             logger.debug(f'encoding data')
@@ -242,7 +242,7 @@ def main(
 
                 # reconstruct signal
                 logger.debug(f'reconstructing signals')
-                X_hat = cs.decode(Y, s=S, processes=processes)
+                X_hat = cs.decode(list(zip(Y, S)))
 
                 # compute RSNR
                 logger.debug(f'computing RSNR')
@@ -279,7 +279,7 @@ def main(
             if mode == 'rakeness':
                 kwargs = {**kwargs, 'correlation': C, 'loc': loc}
             A = generate_sensing_matrix((m, n), **kwargs)
-            cs = CompressedSensing(A, D)
+            cs = CompressedSensing(A, D, decoder='SO', processes=processes)
 
             # load supports
             _path = supports_path(m, seed)
@@ -296,7 +296,7 @@ def main(
 
             # reconstruct signal
             logger.debug(f'reconstructing signals')
-            X_hat = cs.decode(Y, S, processes=processes)
+            X_hat = cs.decode(list(zip(Y, S)))
 
             # compute RSNR
             logger.debug(f'computing RSNR')

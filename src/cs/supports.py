@@ -68,8 +68,7 @@ def find_support_TSOC(x, cs):
     rsnr = np.empty(cs.m, dtype=float)  # stores rsnr at each iteration
     for i in range(cs.m):
         z[argsort_xi[i]] = True  # include element in the support
-        # compute reconstructed signal by pseudo-inversion 
-        x_hat = y @ linalg.pinv(cs.B[:, z]).T @ cs.D[:, z].T
+        x_hat = cs.decoder._decode_with_support(y, z) # reconstructed input
         rsnr[i] = compute_rsnr(x, x_hat)
     k = 1 + np.argmax(rsnr) # number of components to include in the support
 
@@ -110,7 +109,7 @@ def find_support_TSOC2(x, cs):
         for j in np.where(~s1)[0]:  
             s2 = s1.copy()  # support of the inner loop
             s2[j] = True
-            x_hat = cs.decode_with_support(y, s2)
+            x_hat = cs.decoder._decode_with_support(y, s2)
             rsnr2[j] = compute_rsnr(x, x_hat)
         # find element that maximizes RSNR and update support
         s_idx[i] = np.argmax(rsnr2)

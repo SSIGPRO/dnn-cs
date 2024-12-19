@@ -4,13 +4,52 @@ import numpy as np
 from numpy import random
 from scipy import linalg
 
+from .decoders import BasisPursuit, BasisPursuitDenoise
+from .decoders import SupportOracle
 from .rakeness import solve_rakeness 
 from .rakeness import generate_gaussian_sequences, generate_antipodal_sequences
 
-
 class CompressedSensing:
+    """
+    Compressed Sensing System
 
-    def __init__(self, A, D=None):
+    Attributes
+    ----------
+    n: int,
+        output dimension
+    m: int,
+        input dimension (number of measurements)
+    A: (m, n) numpy.ndarray,
+        sensing matrix
+    D: (n, n) numpy.ndarray or None,
+        sparsity basis 
+    decoder: cs.Decoder,
+        compressed sensing decoder
+
+    Methods
+    -------
+    encode(x):
+        compress input signal `x` into a mesurement vector `x`
+
+    decode(y):
+        reconstruct the signal from the measurement vector `y`.
+    """
+
+    def __init__(self, A, D=None, decoder=None, **kwargs):
+        """
+        Compressed Sensing System
+
+        Parameters
+        ----------
+        A: (m, n) numpy.ndarray,
+            sensing matrix
+        D: (n, n) numpy.ndarray or None,
+            sparsity basis 
+        decoder: {'BP', 'BPDN', 'SO'},
+            compressed sensing decoder
+        kwargs: 
+            decoder keyword arguments
+        """
         
         self.m, self.n = A.shape
         self.A = A
@@ -19,37 +58,67 @@ class CompressedSensing:
         self.D = D
         self.B = self.A @ self.D
 
+        if decoder is None:
+            decoder = 'BPDN'
+        
+        if decoder == 'BP':
+            self.decoder = BasisPursuit(self.B, self.D)
+        elif decoder == 'BPDN':
+            self.decoder = BasisPursuitDenoise(self.B, self.D, **kwargs)
+        elif decoder == 'SO': 
+            self.decoder = SupportOracle(self.B, self.D, **kwargs)
+        else:
+            raise ValueError(f'decoder {decoder} not supoorted')
+
+
     def encode(self, x):
         y = x @ self.A.T
         return y
     
-    def decode(self, y, s=None, processes=None):
-        if s is None:
-            # TODO: support estimator
-            # # s = self.estimate_support(y)
-            pass
+    def decode(self, y):
+        return self.decoder.decode(y)
+    
+# class CompressedSensing:
+
+#     def __init__(self, A, D=None):
         
-        if y.ndim == 1:
-            x_hat = self.decode_with_support(y, s)
-        elif y.ndim == 2:
-            if processes is None:
-                x_hat = np.empty(s.shape, dtype=float)
-                for i, (_y, _s) in enumerate(zip(y, s)):
-                    x_hat[i, :] = self.decode_with_support(_y, _s)
-            else:
-                with mp.Pool(processes) as pool:
-                    x_hat = pool.starmap(
-                        self.decode_with_support, zip(y, s), chunksize=100)
-                x_hat = np.stack(x_hat)
-        return x_hat
+#         self.m, self.n = A.shape
+#         self.A = A
+#         if D is None:
+#             D = np.eye(self.n)
+#         self.D = D
+#         self.B = self.A @ self.D
+
+#     def encode(self, x):
+#         y = x @ self.A.T
+#         return y
     
-    def decode_with_support(self, y, s):
-        try:
-            x_hat = y @ linalg.pinv(self.B[:, s]).T @ self.D[:, s].T
-        except linalg.LinAlgError as e:
-            x_hat = np.nan * np.ones(self.n, dtype=float)
-        return x_hat
+#     def decode(self, y, s=None, processes=None):
+#         if s is None:
+#             # TODO: support estimator
+#             # # s = self.estimate_support(y)
+#             pass
+        
+#         if y.ndim == 1:
+#             x_hat = self.decode_with_support(y, s)
+#         elif y.ndim == 2:
+#             if processes is None:
+#                 x_hat = np.empty(s.shape, dtype=float)
+#                 for i, (_y, _s) in enumerate(zip(y, s)):
+#                     x_hat[i, :] = self.decode_with_support(_y, _s)
+#             else:
+#                 with mp.Pool(processes) as pool:
+#                     x_hat = pool.starmap(
+#                         self.decode_with_support, zip(y, s), chunksize=100)
+#                 x_hat = np.stack(x_hat)
+#         return x_hat
     
+#     def decode_with_support(self, y, s):
+#         try:
+#             x_hat = y @ linalg.pinv(self.B[:, s]).T @ self.D[:, s].T
+#         except linalg.LinAlgError as e:
+#             x_hat = np.nan * np.ones(self.n, dtype=float)
+#         return x_hat
 
 
 def generate_sensing_matrix(
