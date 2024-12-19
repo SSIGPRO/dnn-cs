@@ -49,8 +49,7 @@ heart_rate = (60, 100)  # min and max heart rate
 basis = 'sym6'          # sparsity basis
 seed_data_matrix = 0    # seed used to generate data for sensing matrix selection
 seed_selection = 0      # seed used to select the best sensing matrix on data geneerated with seed_data_matrix
-M = 1_000               # number of evaluated sensing matrices to choose the 8 best 
-
+M = 100                 # number of evaluated sensing matrices to choose the 8 best 
 
 def cmdline_args():
     
