@@ -138,10 +138,11 @@ def test(
         detector = pk_pk()
         detector_label = detector_type
 
-    detector = make_pipeline(
-                StandardScaler(with_std=False),
-                detector
-                )
+    if detector_type not in ['LOF', 'OCSVM', 'IF']:
+        detector = make_pipeline(
+                    StandardScaler(with_std=False),
+                    detector
+                    )
         
      # fit the detector
     model_name = f'{detector_label}_N={N_train}_n={n}_m={m}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}'\
