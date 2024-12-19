@@ -75,7 +75,7 @@ def test(
         C = None
     A = generate_sensing_matrix((m, n), mode=mode, orthogonal=orthogonal, correlation=C, loc=loc, seed=seed_matrix)
 
-    cs = CompressedSensing(A, D)
+    cs = CompressedSensing(A, D, decoder='SO')
     Y = cs.encode(X)  # measurements
 
     # ------------------ Labels (support) ------------------
@@ -141,14 +141,15 @@ def test(
     # calculate supports
     Zhat = O > threshold
 
-    # signal reconstruction
-    Xhat = np.empty(X.shape)
-    for i in tqdm.tqdm(range(N_test)):
-        # Xhat[i] = reconstructor(O[i], Y[i], A, D)
-        Xhat[i] = cs.decode_with_support(Y[i], Zhat[i])
+    # # signal reconstruction
+    # Xhat = np.empty(X.shape)
+    # for i in tqdm.tqdm(range(N_test)):
+    #     # Xhat[i] = reconstructor(O[i], Y[i], A, D)
+    #     Xhat[i] = cs.decode_with_support(Y[i], Zhat[i])
+    Xhat = cs.decode(list(zip(Y, Zhat)))
     RSNR = compute_rsnr(X, Xhat)
     results['RSNR'] = np.mean(RSNR)
-
+    
     # save peformance
     pd.to_pickle(pd.Series(results), results_path)
 
