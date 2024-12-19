@@ -223,12 +223,15 @@ def test(
             detector_label = detector_type
             
 
-        # load the detector
-        model_name = f'{detector_label}_N={N_train}_n={n}_m={m}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}'\
+        
+        name = f'{detector_label}_N={N_train}_n={n}_m={m}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}'\
                 f'_isnr={isnr}_mode={mode}_src={source}_ort={orthogonal}_seedmat={seed_matrix}_tf={train_fraction}_seeddet={seed_detector}'\
                 f'_seeddata={seed_train_data}_seedtrain={seed_training}'
         if mode == 'rakeness':
-            model_name = f'{model_name}_corr={corr_name}_loc={loc}'
+            name = f'{name}_corr={corr_name}_loc={loc}'
+
+        # load the detector
+        model_name = f'{detector_label}_{name}'
         model_path = os.path.join(detectors_dir, f'{model_name}.pkl')
         
         if os.path.exists(model_path):
@@ -236,6 +239,18 @@ def test(
                 detector = pickle.load(f)
         else:
             print(f'\ndetector {detector_label} has not been trained')
+            sys.exit(0)
+
+        # load the scaler
+        scaler_name = f'scaler_{name}'
+        scaler_path = os.path.join(detectors_dir, f'{scaler_name}.pkl')
+        # load scaler
+        if os.path.exists(scaler_path):
+            print(f'scaler already trained')
+            with open(scaler_path, 'rb') as f:
+                scaler = pickle.load(f)
+        else:
+            print(f'\nscaler has not been trained')
             sys.exit(0)
 
         results_path = os.path.join(results_folder, f'AUC_detector={model_name}_delta={delta}_seedko={seed_ko}.pkl')
@@ -324,9 +339,11 @@ def test(
         Xko = Xko_df[anomaly_label].values
         if detector_type in ['TSOC', 'AE'] :
             Zanom = np.concatenate([X, Xko])
-        elif detector_type in standard_detectors:
+        elif detector_type not in ['LOF', 'OCSVM', 'IF']:
             Yko = cs.encode(Xko)
             Zanom = np.concatenate([Y, Yko])
+            # center data
+            Z_anom = scaler.transform(Z_anom)
         metric_value = detector.test(Zanom, metric='AUC')
         result.loc[anomaly_label] = metric_value
 
