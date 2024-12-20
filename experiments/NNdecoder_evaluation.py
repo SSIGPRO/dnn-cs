@@ -43,7 +43,7 @@ def test(
 
     # ------------------ Folders ------------------
     results_folder = '/srv/newpenny/dnn-cs/tsoc/results/TSOC/reconstruction'
-    model_folder = f'{models_dir}AE'
+    model_folder = f'{models_dir}NNdecoder'
 
     # ------------------ Show parameter values ------------------
     params = locals()
@@ -84,7 +84,7 @@ def test(
     dec = NNdecoder(n, m)
     dec.to(device) # move the network to GPU
 
-    model_name = f'AE-N={N_train}_n={n}_m={m}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}'\
+    model_name = f'NNdecoder-N={N_train}_n={n}_m={m}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}'\
                  f'_isnr={isnr}_mode={mode}_src={source}_ort={orthogonal}_seedmat={seed_matrix}'\
                  f'_epochs={epochs}_bs={batch_size}_opt={opt}_lr={lr}'\
                  f'_tf={train_fraction}_minlr={min_lr}_p={patience}'\

@@ -161,7 +161,7 @@ def test(
     #     detector = detector.fit()
 
     # evaluate TSOC-based detector
-    if detector_type in ['TSOC', 'AE']:
+    if detector_type in ['TSOC', 'NNdecoder']:
         th_string = '_th={threshold}' if detector_type == 'TSOC' else ''
         alpha_string = f'alpha={alpha}' if detector_type == 'TSOC' else ''
         model_name = f'{detector_type}-N={N_train}_n={n}_m={m}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}'\
@@ -338,7 +338,7 @@ def test(
     for anomaly_label in tqdm.tqdm(anomalies_labels):
         # define the anomalous dataset
         Xko = Xko_df[anomaly_label].values
-        if detector_type in ['TSOC', 'AE'] :
+        if detector_type in ['TSOC', 'NNdecoder'] :
             Zanom = np.concatenate([X, Xko])
         elif detector_type in standard_detectors:
             Yko = cs.encode(Xko)
@@ -375,10 +375,10 @@ def parse_args():
     parser.add_argument('-p', '--processes', type=int, default=48, help="Number of CPU processes")
     parser.add_argument('-g', '--gpu', type=int, default=3, help="GPU index to use for evaluation")
 
-    # AE/TSOC-related arguments
+    # NNdecoder/TSOC-related arguments
     parser.add_argument('-dmd', '--detector_mode', type=str,
                          choices=['self-assessment', 'autoencoder', 'sparsity', 'sparsity-threshold', 'self-assessment-complement', 'complement'],
-                         help="Mode of operation of AE/TSOC-based detector")
+                         help="Mode of operation of NNdecoder/TSOC-based detector")
     parser.add_argument('-fct', '--factor', type=float, default=0.2, help="Factor for augmentation or scheduling")
     parser.add_argument('-minlr', '--min_lr', type=float, default=0.001, help="Minimum learning rate for optimizers")
     parser.add_argument('-mind', '--min_delta', type=float, default=1e-4, help="Minimum change in monitored metric for early stopping")
