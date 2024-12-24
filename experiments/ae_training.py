@@ -16,30 +16,19 @@ sys.path.insert(0, os.path.join(root, 'src'))
 
 from models import models_dir
 from dataset import dataset_dir
-from cs.wavelet_basis import wavelet_basis
 from cs.training_metrics import rsnr
-from models.NNdecoder import NNdecoder
-from cs import CompressedSensing, generate_sensing_matrix
+from models.ae import AE
 
 logging.basicConfig(level=logging.DEBUG)
 
 def training(
-    n, m, epochs, lr, opt, batch_size, N, basis, fs, heart_rate, isnr, mode, 
-    orthogonal, source, seed_matrix, seed_training, processes, gpu, train_fraction, factor, 
+    n, m, epochs, lr, opt, batch_size, N, fs, heart_rate, isnr,
+    seed_training, processes, gpu, train_fraction, factor, 
     min_lr, min_delta, patience
 ):
 
-
     # ------------------ Constants ------------------
-    corr_name = '96af96a7ddfcb2f6059092c250e18f2a'
     seed_data = 11 # seed relative to training datas
-    seed_data_matrix = 0 # seed used to generate data for sensing matrix selection
-    seed_selection = 0 # seed used to select the best sensing matrix on data geneerated with seed_data_matrix
-    if m==48:
-        M = 1_000 # number of evaluated sensing matrices
-    else:
-        M = 100
-    loc = 0.25
 
     # ------------------ Folders ------------------
     model_folder = f'{models_dir}AE'
@@ -80,38 +69,8 @@ def training(
     with open(data_path, 'rb') as f:
         X = pickle.load(f)
 
-    # ------------------ Compressed Sensing ------------------
-    D = wavelet_basis(n, basis, level=2)
-
-    # Sensing matrix
-    if source == 'random':
-        # Generate a random sensing matrix
-        if mode == 'rakeness':
-            corr_path = os.path.join(dataset_dir, 'correlation', f'{corr_name}.pkl')
-            with open(corr_path, 'rb') as f:
-                C = pickle.load(f)
-        else:
-            C = None
-        A = generate_sensing_matrix((m, n), mode=mode, orthogonal=orthogonal, correlation=C, loc=loc, seed=seed_matrix)
-    elif source == 'best':
-        # Load the best sensing matrix
-
-        A_folder = f'ecg_N=10000_n={n}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}_isnr={isnr}_seed={seed_data_matrix}'
-        A_name = f'sensing_matrix_M={M}_m={m}_mode={mode}_seed={seed_selection}'
-        if mode == 'rakeness':
-            A_name = f'{A_name}_loc={loc}_corr={corr_name}'
-        data_path = os.path.join(dataset_dir, A_folder, 'A_Filippo', f'{A_name}.pkl')
-        with open(data_path, 'rb') as f:
-            A_dict = pickle.load(f)
-        A = A_dict[seed_matrix]['matrix']
-        seed_matrix = A_dict[seed_matrix]['seed']
-        logging.info(f'sensing matrix ({m}, {n}) with seed={seed_matrix} loaded')
-
-    cs = CompressedSensing(A, D)
-    Y = cs.encode(X)  # measurements
-
     # ------------------ Data loaders ------------------
-    dataset = TensorDataset(torch.from_numpy(Y).float(), torch.from_numpy(X).float())  # Create a dataset from the tensors
+    dataset = TensorDataset(torch.from_numpy(X).float())  # Create a dataset from the tensors
     # Split sizes for training and validation
     train_size = int(train_fraction * len(dataset))  # 90% for training
     val_size = len(dataset) - train_size  # 10% for validation
@@ -128,15 +87,13 @@ def training(
                              num_workers=processes, worker_init_fn=seed_worker, generator=generator)
 
     # ------------------ Neural Network initialization ------------------
-    dec = NNdecoder(n, m)
-    dec.to(device) # move the network to GPU
+    ae = AE(n, m)
+    ae.to(device) # move the network to GPU
     model_name = f'AE-N={N}_n={n}_m={m}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}'\
-                 f'_isnr={isnr}_mode={mode}_src={source}_ort={orthogonal}_seedmat={seed_matrix}'\
+                 f'_isnr={isnr}'\
                  f'_epochs={epochs}_bs={batch_size}_opt={opt}_lr={lr}'\
                  f'_tf={train_fraction}_minlr={min_lr}_p={patience}'\
                  f'_mind={min_delta}_seeddata={seed_data}_seedtrain={seed_training}'    
-    if mode == 'rakeness':
-        model_name = f'{model_name}_corr={corr_name}_loc={loc}'
     model_path = os.path.join(model_folder, f'{model_name}.pth')
 
     # ------------------ Trining loop ------------------
@@ -147,9 +104,9 @@ def training(
         sys.exit(0)
     else:
         if opt=='sgd':
-            optimizer = optim.SGD(dec.parameters(), lr=lr)
+            optimizer = optim.SGD(ae.parameters(), lr=lr)
         elif opt=='adam':
-            optimizer = optim.Adam(dec.parameters(), lr=lr)
+            optimizer = optim.Adam(ae.parameters(), lr=lr)
         scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=factor, threshold=min_delta, threshold_mode='abs', patience=patience//2, min_lr=min_lr)
         min_val_loss = np.inf
         patience_counter = 0
@@ -158,12 +115,12 @@ def training(
 
         for epoch in range(epochs):
             # train loop
-            dec.train()     # Set the model to training mode
+            ae.train()     # Set the model to training mode
             train_loss = 0.0
             train_rsnr = 0.0
-            for Y_batch, X_batch in train_loader:
-                Y_batch, X_batch = Y_batch.to(device), X_batch.to(device)     # move training data to GPU
-                output = dec(Y_batch)
+            for X_batch in train_loader:
+                X_batch = X_batch[0].to(device)     # move training data to GPU
+                output = ae(X_batch)
                 loss = mse(output, X_batch)
                 optimizer.zero_grad()     # zeroes the gradient buffers of all parameters
                 loss.backward()     # Backpropagate
@@ -180,13 +137,13 @@ def training(
             train_rsnr = train_rsnr/num_batches
 
             # validation loop
-            dec.eval()     # Set the model to evaluation mode
+            ae.eval()     # Set the model to evaluation mode
             val_loss = 0.0
             val_rsnr = 0.0
             with torch.no_grad():     # disables gradient calculation for the validation phase 
-                for Y_batch, X_batch in val_loader:
-                    Y_batch, X_batch = Y_batch.to(device), X_batch.to(device)     # move validation data to GPU
-                    output = dec(Y_batch)
+                for X_batch in val_loader:
+                    X_batch = X_batch[0].to(device)     # move validation data to GPU
+                    output = ae(X_batch)
                     val_loss += mse(output, X_batch).item()
                     val_rsnr += rsnr(output, X_batch).item()
 
@@ -206,33 +163,28 @@ def training(
                 print("Early stopping")
                 break
 
-            print(f"Epoch [{epoch+1}/{epochs}], LR={scheduler.get_last_lr()[0]}\nTRAIN Loss: {np.round(train_loss, 8)}   RSNR {np.round(train_rsnr, 3)}" +\
+            print(f"Epoch [{epoch+1}/{epochs}], LR={scheduler.get_last_lr()[0]}\nTRAIN Loss: {np.round(train_loss, 8)}   RSNR {np.round(train_rsnr, 3)}   " +\
                   f"VAL Loss: {np.round(val_loss, 8)}   RSNR {np.round(val_rsnr, 3)}\n")
 
         # save trained model
-        torch.save(dec.state_dict(), model_path)
+        torch.save(ae.state_dict(), model_path)
 
 # ------------------ Perser definition ------------------
 def parse_args():
-    parser = argparse.ArgumentParser(description="Training Script for TSOC Model with Compressed Sensing")
+    parser = argparse.ArgumentParser(description="Training Script for AE Model")
 
     # Short and long argument versions
     parser.add_argument('--n', '-n', type=int, required=True, help="Number of samples per signal")
     parser.add_argument('--m', '-m', type=int, required=True, help="Number of measurements")
     parser.add_argument('--isnr', '-i', type=int, required=True, help="Signal-to-noise ratio (SNR)")
-    parser.add_argument('--mode', '-M', type=str, choices=['standard', 'rakeness'], required=True, help="Measurement matrix mode: 'standard' or 'rakeness'")
     parser.add_argument('--seed_training', '-s', type=int, required=True, help="Training-related random seed for reproducibility")
-    parser.add_argument('--seed_matrix', '-S', type=int, required=True, help="Seed for random or index for (one of) the best Measurement matrix")
     parser.add_argument('--epochs', '-e', type=int, default=500, help="Number of training epochs")
     parser.add_argument('--lr', '-l', type=float, default=0.1, help="Learning rate")
     parser.add_argument('--batch_size', '-b', type=int, default=50, help="Batch size for training")
     parser.add_argument('--N', '-N', type=int, default=2000000, help="Number of training instances")
-    parser.add_argument('--basis', '-B', type=str, default='sym6', help="Wavelet basis function")
     parser.add_argument('--optimizer', '-O', type=str, default='adam', help="Optimizer for training")
     parser.add_argument('--fs', '-f', type=int, default=256, help="Sampling frequency")
     parser.add_argument('--heart_rate', '-r', type=int, nargs=2, default=(60, 100), help="Heart rate range")
-    parser.add_argument('--orthogonal', '-o', action='store_true', help="Use orthogonalized measurement matrix (default: False)")
-    parser.add_argument('--source', '-c', type=str, choices=['best', 'random'], default='best', help="Measurement matrix type: genereated randomly or leading to best performance")
     parser.add_argument('--processes', '-p', type=int, default=48, help="Number of CPU processes")
     parser.add_argument('--gpu', '-g', type=int, default=3, help="GPU index to use for training")
     parser.add_argument('--train_fraction', '-T', type=float, default=0.9, help="Fraction of data used for training")
@@ -257,14 +209,9 @@ if __name__ == '__main__':
         opt=args.optimizer,
         batch_size=args.batch_size,
         N=args.N,
-        basis=args.basis,
         fs=args.fs,
         heart_rate=args.heart_rate,
         isnr=args.isnr,
-        mode=args.mode,  
-        orthogonal=args.orthogonal,
-        source=args.source,
-        seed_matrix=args.seed_matrix,
         seed_training=args.seed_training,
         processes=args.processes,
         gpu=args.gpu,
