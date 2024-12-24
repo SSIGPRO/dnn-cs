@@ -16,10 +16,18 @@ class AE(nn.Module):
         self.fc3 = nn.Linear(2*self.n, self.n)
         self.fc4 = nn.Linear(self.n, self.n)
 
-    def forward(self, x):
-        y = self.fc0(x)
+    def encode(self, x):
+        return self.fc0(x)
+    
+    def decode(self, y):
         z = F.relu(self.fc1(y))
         z = F.relu(self.fc2(z))
         z = F.relu(self.fc3(z))
-        output = self.fc4(z) # Final layer (no activation by default)
+        return self.fc4(z) # Final layer (no activation by default)
+
+    def forward(self, x):
+        y = self.encode(x)
+        output = self.decode(y)
         return output
+    
+    
