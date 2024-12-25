@@ -36,6 +36,7 @@ from cs.wavelet_basis import wavelet_basis
 from cs import CompressedSensing, generate_sensing_matrix
 from detectors.tsoc import TSOCDetector
 from detectors.NNdecoder import NNdecoderDetector
+from detectors.ae import AEDetector
 from detectors import detectors_dir
 from models import models_dir
 
@@ -182,6 +183,20 @@ def test(
             detector = TSOCDetector(cs, model_path, mode=detector_mode, threshold=threshold, gpu=device)
         else:
             detector = NNdecoderDetector(cs, model_path, mode=detector_mode, gpu=device)
+        detector_label = model_name
+        detector = detector.fit()
+    
+    elif detector_type == 'AE':
+        model_name = f'{detector_type}-N={N_train}_n={n}_m={m}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}'\
+                     f'_isnr={isnr}_epochs={epochs}_bs={batch_size}_opt={opt}_lr={lr}'\
+                     f'_tf={train_fraction}_minlr={min_lr}_p={patience}'\
+                     f'_mind={min_delta}_seeddata={seed_train_data}_seedtrain={seed_training}'
+        file_name = f'AUC_detector={model_name}_delta={delta}_seedko={seed_ko}.pkl'
+
+        model_path = os.path.join(model_folder, f'{model_name}.pth')
+        results_path = os.path.join(results_folder, detector_type, detector_mode, file_name)
+
+        detector = AEDetector(n, m, model_path, mode=detector_mode, gpu=device)
         detector_label = model_name
         detector = detector.fit()
         
@@ -338,7 +353,7 @@ def test(
     for anomaly_label in tqdm.tqdm(anomalies_labels):
         # define the anomalous dataset
         Xko = Xko_df[anomaly_label].values
-        if detector_type in ['TSOC', 'NNdecoder'] :
+        if detector_type in ['TSOC', 'NNdecoder', 'AE'] :
             Zanom = np.concatenate([X, Xko])
         elif detector_type in standard_detectors:
             Yko = cs.encode(Xko)
