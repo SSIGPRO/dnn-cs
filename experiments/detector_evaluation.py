@@ -114,7 +114,7 @@ def test(
         seed_matrix = A_dict[seed_matrix]['seed']
         logging.info(f'sensing matrix ({m}, {n}) with seed={seed_matrix} loaded')
 
-    cs = CompressedSensing(A, D)
+    cs = CompressedSensing(A, D, decoder='SO')
     Y = cs.encode(X)  # measurements
 
     # ------------------ Init and fit the detector ------------------

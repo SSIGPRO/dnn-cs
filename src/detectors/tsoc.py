@@ -5,13 +5,14 @@ from scipy import linalg
 from cs.wavelet_basis import wavelet_basis
 from cs.utils import reconstructor
 from cs import CompressedSensing, generate_sensing_matrix
+from cs.decoders import SupportOracle
 from models.tsoc import TSOC
 from wombats.detectors._base import Detector
 
 class TSOCDetector(Detector):
 
     def __init__(self, cs, model_path, batch_size=100, mode='self-assessment', threshold=0.5, filter=True, gpu=None):
-        
+        assert isinstance(cs.decoder, SupportOracle), "This detector requires a CS instance initialized with 'SO' decoder"
         self.cs = cs
         self.n = cs.n
         self.m = cs.m
@@ -74,10 +75,10 @@ class TSOCDetector(Detector):
 
         elif self.mode in ['autoencoder', 'self-assessment', 'self-assessment-complement', 'complement']:
             # reconstruct data
-            Xhat = np.empty(X_test.shape)
-            for i in range(X_test.shape[0]):
-                Xhat[i] = self.cs.decode_with_support(Y[i], Zhat[i])
-            # Xhat = self.cs.decode(list(zip(Y, Zhat)))
+            # Xhat = np.empty(X_test.shape)
+            # for i in range(X_test.shape[0]):
+            #     Xhat[i] = self.cs.decode_with_support(Y[i], Zhat[i])
+            Xhat = self.cs.decode(list(zip(Y, Zhat)))
 
             if self.mode=='autoencoder':
                 # estiamte the difference between the reconstructed data and data
