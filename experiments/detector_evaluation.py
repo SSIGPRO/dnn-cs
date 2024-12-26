@@ -180,7 +180,8 @@ def test(
         results_path = os.path.join(results_folder, subfolder, alpha_string, detector_mode, file_name)
 
         if detector_type == 'TSOC':
-            detector = TSOCDetector(cs, model_path, mode=detector_mode, threshold=threshold, gpu=device)
+            detector = TSOCDetector(cs, model_path, mode=detector_mode,
+                                     threshold=threshold, filter=True, gpu=device)
         else:
             detector = NNdecoderDetector(cs, model_path, mode=detector_mode, gpu=device)
         detector_label = model_name

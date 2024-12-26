@@ -121,14 +121,14 @@ def test(
 
     # evaluate TSOC-based detector
     if detector_type in ['TSOC', 'NNdecoder']:
-        th_string = '_th={threshold}' if detector_type == 'TSOC' else ''
+        th_string = f'_th={threshold}' if detector_type == 'TSOC' else ''
         alpha_string = f'alpha={alpha}' if detector_type == 'TSOC' else ''
         model_name = f'{detector_type}-N={N_train}_n={n}_m={m}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}'\
                      f'_isnr={isnr}_mode={mode}_src={source}_ort={orthogonal}_seedmat={seed_matrix}'\
                      f'_epochs={epochs}_bs={batch_size}_opt={opt}_lr={lr}'\
                      f'{th_string}_tf={train_fraction}_minlr={min_lr}_p={patience}'\
                      f'_mind={min_delta}_seeddata={seed_train_data}_seedtrain={seed_training}'
-        file_name = f'AUC_cov_alt_detector={model_name}_delta={delta}_seedko={seed_ko}_numanomalies={num_anomalies}.pkl'
+        file_name = f'AUC_cov_alt_detector={model_name}_delta={delta}_seedko={seed_ko}_na={num_anomalies}.pkl'
         subfolder = f'{detector_type}_{mode}'   
         if mode == 'rakeness':
             model_name = f'{model_name}_corr={corr_name}_loc={loc}'
@@ -138,7 +138,8 @@ def test(
         results_path = os.path.join(results_folder, subfolder, alpha_string, detector_mode, file_name)
 
         if detector_type == 'TSOC':
-            detector = TSOCDetector(cs, model_path, mode=detector_mode, threshold=threshold, gpu=device)
+            detector = TSOCDetector(cs, model_path, mode=detector_mode,
+                                     threshold=threshold, filter=True, gpu=device)
         else:
             detector = NNdecoderDetector(cs, model_path, mode=detector_mode, gpu=device)
         detector_label = model_name
@@ -149,7 +150,7 @@ def test(
                      f'_isnr={isnr}_epochs={epochs}_bs={batch_size}_opt={opt}_lr={lr}'\
                      f'_tf={train_fraction}_minlr={min_lr}_p={patience}'\
                      f'_mind={min_delta}_seeddata={seed_train_data}_seedtrain={seed_training}'
-        file_name = f'AUC_cov_alt_detector={model_name}_delta={delta}_seedko={seed_ko}_numanomalies={num_anomalies}.pkl'
+        file_name = f'AUC_cov_alt_detector={model_name}_delta={delta}_seedko={seed_ko}_na={num_anomalies}.pkl'
 
         model_path = os.path.join(model_folder, f'{model_name}.pth')
         results_path = os.path.join(results_folder, detector_type, detector_mode, file_name)
@@ -229,7 +230,7 @@ def test(
 
         results_path = os.path.join(
             results_folder,
-              f'AUC_cov_alt_detector={model_name}_delta={delta}_seedko={seed_ko}_numanomalies={num_anomalies}.pkl'
+              f'AUC_cov_alt_detector={model_name}_delta={delta}_seedko={seed_ko}_na={num_anomalies}.pkl'
               )
 
     os.makedirs(os.path.dirname(results_path), exist_ok=True)

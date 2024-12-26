@@ -10,12 +10,13 @@ from wombats.detectors._base import Detector
 
 class TSOCDetector(Detector):
 
-    def __init__(self, cs, model_path, batch_size=100, mode='self-assessment', threshold=0.5,  gpu=None):
+    def __init__(self, cs, model_path, batch_size=100, mode='self-assessment', threshold=0.5, filter=True, gpu=None):
         
         self.cs = cs
         self.n = cs.n
         self.m = cs.m
         self.threshold = threshold
+        self.filter = filter
 
         # init TSOC
         self.tsoc = TSOC(cs.n, cs.m)
@@ -54,6 +55,13 @@ class TSOCDetector(Detector):
             O = O.cpu().detach().numpy()
         else:
             O = O.detach().numpy()
+        
+        # ensure k < m
+        if self.filter:
+            th = np.sort(O, axis=-1)[:, self.n-(self.m-1)]
+            th = th.reshape(-1, 1)
+            index = O < th
+            O[index] = 0
 
         # calculate supports
         Zhat = O > self.threshold
@@ -69,6 +77,7 @@ class TSOCDetector(Detector):
             Xhat = np.empty(X_test.shape)
             for i in range(X_test.shape[0]):
                 Xhat[i] = self.cs.decode_with_support(Y[i], Zhat[i])
+            # Xhat = self.cs.decode(list(zip(Y, Zhat)))
 
             if self.mode=='autoencoder':
                 # estiamte the difference between the reconstructed data and data
