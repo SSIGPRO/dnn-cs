@@ -2,12 +2,12 @@ import os
 
 os.environ['MKL_THREADING_LAYER'] = 'GNU'
 os.environ['MKL_SERVICE_FORCE_INTEL'] = '1'
-
-os.environ["OMP_NUM_THREADS"] = "6" 
-os.environ["OPENBLAS_NUM_THREADS"] = "6" 
-os.environ["MKL_NUM_THREADS"] = "6" 
-os.environ["VECLIB_MAXIMUM_THREADS"] = "6" 
-os.environ["NUMEXPR_NUM_THREADS"] = "6"
+# The number of used threads is set here. Some detectors, such as LOF, can take huge advantage from parallelization 
+os.environ["OMP_NUM_THREADS"] = "50" 
+os.environ["OPENBLAS_NUM_THREADS"] = "50" 
+os.environ["MKL_NUM_THREADS"] = "50" 
+os.environ["VECLIB_MAXIMUM_THREADS"] = "50" 
+os.environ["NUMEXPR_NUM_THREADS"] = "50"
 
 
 import sys
