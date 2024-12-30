@@ -224,12 +224,12 @@
 
 # m=48                # Number of measurements
 # # m_list=(16 32 48 64)
-# m_list=(48)
+# m_list=(16)
 # # seed_training=1     # Training-related random seed for reproducibility
-# # seed_training_list=(0 1 2 3)
-# seed_training_list=(0)
+# seed_training_list=(0 1 2 3)
+# # seed_training_list=(0)
 # mode="rakeness"     # Encoder mode, change to 'rakeness' if needed
-# gpu=5               # GPU index
+# gpu=4               # GPU index
 
 # # optimizer="sgd"    # Optimizer for training
 # # lr=0.1              # Learning rate
@@ -246,8 +246,8 @@
 # # seed_matrix=0       # Index or seed of the best or random matrix, respectivelly
 # # seed_matrix_list=(0 1 2 3)
 # seed_matrix_list=(0)
-# # alpha=0.1           # training loss weight promoting either FN (>0.5) or FP (<0.5) reduction 
-# alpha_list=(0.9 0.99)
+# alpha=0.5           # training loss weight promoting either FN (>0.5) or FP (<0.5) reduction 
+# # alpha_list=(0.5)
 
 # train_fraction=0.9  # Fraction of data used for training
 # factor=0.2          # Factor for ReduceLROnPlateau scheduler
@@ -270,8 +270,8 @@
 #     orthogonal_flag=""
 # fi
 
-# for alpha in "${alpha_list[@]}"
-# do
+# # for alpha in "${alpha_list[@]}"
+# # do
 #     for seed_training in "${seed_training_list[@]}"
 #     do
 #         for seed_matrix in "${seed_matrix_list[@]}"
@@ -538,7 +538,7 @@
 # mode="rakeness"     # Encoder mode, change to 'rakeness' if needed
 # orthogonal=True     # Whether to use orthogonalized measurement matrix
 
-# detector_type="NNdecoder"  # Detector type to evaluate (e.g., TSOC, SPE, OCSVM)
+# detector_type="TSOC"  # Detector type to evaluate (e.g., TSOC, SPE, OCSVM)
 # # delta=0.05           # Anomaly intensity parameter
 # # delta_list=(0.01 0.02 0.05 0.1 0.2 0.5)
 # delta_list=(0.8 0.001 0.002 0.005 0.01 0.02 0.05 0.1 0.2 0.5)
@@ -564,9 +564,9 @@
 # min_lr=0.00001              # Minimum learning rate for optimizers
 
 # # AE-related arguments
-# min_delta=1e-8            # Minimum change in monitored metric for early stopping
+# # min_delta=1e-8            # Minimum change in monitored metric for early stopping
 # # TSOC-related arguments
-# # min_delta=1e-5            # Minimum change in monitored metric for early stopping
+# min_delta=1e-5            # Minimum change in monitored metric for early stopping
 # threshold=0.5             # threshold 
 # alpha=0.5                 # loss weight
 # # Standard detectors-related arguments
@@ -607,10 +607,10 @@
 #     # for estimators in "${estimators_list[@]}"
 #     # for neighbors in "${neighbors_list[@]}"
 #     # for nu in "${nu_list[@]}"
-#     # for batch_size in "${batch_size_list[@]}"
+#     for batch_size in "${batch_size_list[@]}"
 #     # for alpha in "${alpha_list[@]}"
 #     # for detector_type in "MD" "TV" "ZC" "pk-pk" "energy"
-#     # do
+#     do
 #         # for detector_type in "SPE" "T2" 
 #         # do
 #         # Run the evaluation script with the selected configuration
@@ -659,146 +659,147 @@
 # Anomaly Detection Evaluation of SA and PSA                                   #
 ################################################################################
 
-# Configuration Section
-n=128               # Number of samples per signal
-m=48                # Number of measurements
-seed_ko=0           # Random seed for anomalies generation
-isnr=35             # Signal-to-noise ratio (SNR)
+# # Configuration Section
+# n=128               # Number of samples per signal
+# m=48                # Number of measurements
+# seed_ko=0           # Random seed for anomalies generation
+# isnr=35             # Signal-to-noise ratio (SNR)
 
-N_train=2000000     # Number of training instances
-N_test=10000        # Number of test instances
+# N_train=2000000     # Number of training instances
+# N_test=10000        # Number of test instances
 
-num_anomalies=100
+# num_anomalies=100
 
-train_fraction=0.9  # Fraction of data used for training
-basis="sym6"        # Wavelet basis function
-fs=256              # Sampling frequency
-heart_rate="60 100" # Heart rate range
+# train_fraction=0.9  # Fraction of data used for training
+# basis="sym6"        # Wavelet basis function
+# fs=256              # Sampling frequency
+# heart_rate="60 100" # Heart rate range
 
-seed_matrix=0       # Index or seed of the best or random matrix, respectivelly
-processes=48        # Number of CPU processes
-gpu=3               # GPU index for evaluation
+# seed_matrix=0       # Index or seed of the best or random matrix, respectivelly
+# processes=48        # Number of CPU processes
+# gpu=3               # GPU index for evaluation
 
-mode="rakeness"     # Encoder mode, change to 'rakeness' if needed
-orthogonal=True     # Whether to use orthogonalized measurement matrix
+# mode="rakeness"     # Encoder mode, change to 'rakeness' if needed
+# orthogonal=True     # Whether to use orthogonalized measurement matrix
 
-detector_type="AE"  # Detector type to evaluate (e.g., TSOC, SPE, OCSVM)
-# delta=0.05           # Anomaly intensity parameter
-# delta_list=(0.01 0.02 0.05 0.1 0.2 0.5)
-delta_list=(0.8 0.001 0.002 0.005 0.01 0.02 0.05 0.1 0.2 0.5)
-# delta_list=(0.8 0.001 0.002 0.005)
-# delta_list=(0.8)
-source='best'       # Whether to use best or random matrix
+# detector_type="OC"  # Detector type to evaluate (e.g., TSOC, SPE, OCSVM)
+# # delta=0.05           # Anomaly intensity parameter
+# # delta_list=(0.01 0.02 0.05 0.1 0.2 0.5)
+# delta_list=(0.8 0.001 0.002 0.005 0.01 0.02 0.05 0.1 0.2 0.5)
+# # delta_list=(0.8 0.001 0.002 0.005)
+# # delta_list=(0.8)
+# source='best'       # Whether to use best or random matrix
 
-# TSOC-specific configuration
-# detector_mode="self-assessment"  # Mode of operation for TSOC
-# detector_mode='self-assessment', 'autoencoder', 'sparsity', 'sparsity-threshold', 'self-assessment-complement', 'complement'
-detector_mode="self-assessment"
-factor=0.2                # Augmentation/scheduling factor
-
-
-patience=40               # Patience for early stopping
-epochs=1000                # Number of epochs for training
+# # TSOC-specific configuration
+# # detector_mode="self-assessment"  # Mode of operation for TSOC
+# # detector_mode='self-assessment', 'autoencoder', 'sparsity', 'sparsity-threshold', 'self-assessment-complement', 'complement'
+# detector_mode="self-assessment"
+# factor=0.2                # Augmentation/scheduling factor
 
 
-lr=0.001                    # Learning rate
-batch_size=128             # Batch size for training
-batch_size_list=(32 64 128)             # Batch size for training
-optimizer="adam"    # Optimizer for training
-min_lr=0.00001              # Minimum learning rate for optimizers
+# patience=40               # Patience for early stopping
+# epochs=1000                # Number of epochs for training
 
-# AE-related arguments
-min_delta=1e-8            # Minimum change in monitored metric for early stopping
-# TSOC-related arguments
+
+# lr=0.001                    # Learning rate
+# batch_size=128             # Batch size for training
+# batch_size_list=(32 64 128)             # Batch size for training
+# optimizer="adam"    # Optimizer for training
+# min_lr=0.00001              # Minimum learning rate for optimizers
+
+# # AE-related arguments
+# # min_delta=1e-8            # Minimum change in monitored metric for early stopping
+# # TSOC-related arguments
 # min_delta=1e-5            # Minimum change in monitored metric for early stopping
-threshold=0.5             # threshold 
-alpha=0.5                 # loss weight
-# Standard detectors-related arguments
-seed_detector=0
-# Parameter k for SPE, T2:
-k=5
-# Order parameter for AR detector:                       
-order=1
-# Parameters for OCSVM:                 
+# threshold=0.5             # threshold 
+# alpha=0.5                 # loss weight
+# # Standard detectors-related arguments
+# seed_detector=0
+# # Parameter k for SPE, T2:
+# k=5
+# # Order parameter for AR detector:                       
+# order=1
+# # Parameters for OCSVM:                 
 # kernel="rbf"    
-kernel="poly"          
-nu=0.5                    
-# Number of neighbors for LOF detector
-neighbors=10
-# Number of estimators for IF detector                      
-estimators=100
+# # kernel="poly"          
+# nu=0.5                    
+# # Number of neighbors for LOF detector
+# neighbors=10
+# # Number of estimators for IF detector                      
+# estimators=100
 
-# alpha_list=(0.001 0.01 0.1 0.25 0.4 0.6 0.75 0.9 0.99)
-alpha_list=(0.25 0.6)
-ks=(1 2 4 8 16 24 32 46)
-orders=(1 2 4 8 16 24 32 46)
-nu_list=(0.001 0.01 0.1)
-neighbors_list=(5 10 20 50)
-estimators_list=(5 10 20 50 100 200 500 1000)
-
-
-if [ "$orthogonal" = "True" ]; then
-    orthogonal_flag="--orthogonal"
-else
-    orthogonal_flag=""
-fi
+# # alpha_list=(0.001 0.01 0.1 0.25 0.4 0.6 0.75 0.9 0.99)
+# alpha_list=(0.25 0.6)
+# ks=(1 2 4 8 16 24 32 46)
+# orders=(1 2 4 8 16 24 32 46)
+# nu_list=(0.001 0.01 0.1)
+# neighbors_list=(5 10 20 50)
+# estimators_list=(5 10 20 50 100 200 500 1000)
 
 
-for delta in "${delta_list[@]}"
-do
-    # for k in "${ks[@]}"
-    # for order in "${orders[@]}"
-    # for estimators in "${estimators_list[@]}"
-    # for neighbors in "${neighbors_list[@]}"
-    # for nu in "${nu_list[@]}"
-    # for batch_size in "${batch_size_list[@]}"
-    # for alpha in "${alpha_list[@]}"
-    # for detector_type in "MD" "TV" "ZC" "pk-pk" "energy"
-    # do
-        # for detector_type in "SPE" "T2" 
-        # do
-        # Run the evaluation script with the selected configuration
-        python detector_evaluation_covariance_alterations.py \
-            --n $n \
-            --m $m \
-            --seed_ko $seed_ko \
-            --mode $mode \
-            --isnr $isnr \
-            --detector_type $detector_type \
-            --delta $delta \
-            --N_train $N_train \
-            --N_test $N_test \
-            --num_anomalies $num_anomalies \
-            --train_fraction $train_fraction \
-            --basis $basis \
-            --fs $fs \
-            --heart_rate $heart_rate \
-            $orthogonal_flag \
-            --source $source \
-            --seed_matrix $seed_matrix \
-            --seed_detector $seed_detector \
-            --processes $processes \
-            --gpu $gpu \
-            --factor $factor \
-            --alpha $alpha \
-            --min_lr $min_lr \
-            --min_delta $min_delta \
-            --patience $patience \
-            --epochs $epochs \
-            --lr $lr \
-            --batch_size $batch_size \
-            --threshold $threshold \
-            --optimizer $optimizer \
-            --detector_mode $detector_mode \
-            --k $k \
-            --order $order \
-            --kernel $kernel \
-            --nu $nu \
-            --neighbors $neighbors \
-            --estimators $estimators
-        done
-    done
-done
+# if [ "$orthogonal" = "True" ]; then
+#     orthogonal_flag="--orthogonal"
+# else
+#     orthogonal_flag=""
+# fi
+
+
+# for delta in "${delta_list[@]}"
+# do
+#     # for k in "${ks[@]}"
+#     # for order in "${orders[@]}"
+#     # for estimators in "${estimators_list[@]}"
+#     # for neighbors in "${neighbors_list[@]}"
+#     for nu in "${nu_list[@]}"
+#     # for batch_size in "${batch_size_list[@]}"
+#     # for alpha in "${alpha_list[@]}"
+#     # for detector_type in "MD" "TV" "ZC" "pk-pk" "energy"
+#     do
+#         # for detector_type in "SPE" "T2" 
+#         for kernel in "rbf" "poly" 
+#         do
+#         # Run the evaluation script with the selected configuration
+#         python detector_evaluation_covariance_alterations.py \
+#             --n $n \
+#             --m $m \
+#             --seed_ko $seed_ko \
+#             --mode $mode \
+#             --isnr $isnr \
+#             --detector_type $detector_type \
+#             --delta $delta \
+#             --N_train $N_train \
+#             --N_test $N_test \
+#             --num_anomalies $num_anomalies \
+#             --train_fraction $train_fraction \
+#             --basis $basis \
+#             --fs $fs \
+#             --heart_rate $heart_rate \
+#             $orthogonal_flag \
+#             --source $source \
+#             --seed_matrix $seed_matrix \
+#             --seed_detector $seed_detector \
+#             --processes $processes \
+#             --gpu $gpu \
+#             --factor $factor \
+#             --alpha $alpha \
+#             --min_lr $min_lr \
+#             --min_delta $min_delta \
+#             --patience $patience \
+#             --epochs $epochs \
+#             --lr $lr \
+#             --batch_size $batch_size \
+#             --threshold $threshold \
+#             --optimizer $optimizer \
+#             --detector_mode $detector_mode \
+#             --k $k \
+#             --order $order \
+#             --kernel $kernel \
+#             --nu $nu \
+#             --neighbors $neighbors \
+#             --estimators $estimators
+#         done
+#     done
+# done
 
 # ###############################################################################
 # NNdecoder Training for Multiple Configurations                                #
@@ -810,12 +811,12 @@ done
 
 # m=32                # Number of measurements
 # # m_list=(16 32 48 64)
-# m_list=(32)
+# m_list=(64)
 # # seed_training=1     # Training-related random seed for reproducibility
 # seed_training_list=(0 1 2 3)
 # # seed_training_list=(0)
 # mode="rakeness"     # Encoder mode, change to 'rakeness' if needed
-# gpu=1               # GPU index
+# gpu=4               # GPU index
 
 # # optimizer="sgd"    # Optimizer for training
 # # lr=0.1              # Learning rate
@@ -894,66 +895,70 @@ done
 # Autoencoder Training for Multiple Configurations                                #
 # ###############################################################################
 
-# # Configuration Section
-# n=128               # Number of samples per signal
-# isnr=35             # Signal-to-noise ratio (SNR)
+# Configuration Section
+n=128               # Number of samples per signal
+isnr=35             # Signal-to-noise ratio (SNR)
 
-# m=32                # Number of measurements
-# # m_list=(16 32 48 64)
-# m_list=(48)
-# # seed_training=1     # Training-related random seed for reproducibility
-# seed_training_list=(0 1 2 3)
-# gpu=3               # GPU index
+m=32                # Number of measurements
+# m_list=(16 32 48 64)
+m_list=(16)
+# seed_training=1     # Training-related random seed for reproducibility
+seed_training_list=(0 1 2 3)
+seed_training_list=(3)
+gpu=4               # GPU index
 
-# # optimizer="sgd"    # Optimizer for training
-# # lr=0.1              # Learning rate
-# # batch_size=50       # Batch size for training
-# # min_lr=0.001        # Minimum learning rate
+# optimizer="sgd"    # Optimizer for training
+# lr=0.1              # Learning rate
+# batch_size=50       # Batch size for training
+# min_lr=0.001        # Minimum learning rate
 
-# optimizer="adam"    # Optimizer for training
-# lr=0.001            # Learning rate
-# batch_size=128      # Batch size for training
-# min_lr=0.00001      # Minimum learning rate
+beta=0            # Latent volume regularization weight
 
-# train_fraction=0.9  # Fraction of data used for training
-# factor=0.2          # Factor for ReduceLROnPlateau scheduler
+optimizer="adam"    # Optimizer for training
+lr=0.001            # Learning rate
+batch_size=128      # Batch size for training
+min_lr=0.00001      # Minimum learning rate
 
-# min_delta=1e-8      # Minimum delta for early stopping and ReduceLROnPlateau
-# patience=40         # Patience for early stopping
-# epochs=1000         # Number of training epochs
+train_fraction=0.9  # Fraction of data used for training
+factor=0.2          # Factor for ReduceLROnPlateau scheduler
 
-# N=2000000           # Number of training instances
-# fs=256              # Sampling frequency
-# heart_rate="60 100" # Heart rate range
-# processes=48        # Number of CPU processes for parallelism
+min_delta=1e-8      # Minimum delta for early stopping and ReduceLROnPlateau
+patience=40         # Patience for early stopping
+epochs=1000         # Number of training epochs
 
-# for seed_training in "${seed_training_list[@]}"
-# do
-#     for m in "${m_list[@]}"
-#     do
+N=2000000           # Number of training instances
+fs=256              # Sampling frequency
+heart_rate="60 100" # Heart rate range
+processes=48        # Number of CPU processes for parallelism
 
-#         # Run the training script with the selected configuration
-#         python ae_training.py \
-#             --n $n \
-#             --m $m \
-#             --epochs $epochs \
-#             --lr $lr \
-#             --optimizer $optimizer \
-#             --batch_size $batch_size \
-#             --N $N \
-#             --fs $fs \
-#             --heart_rate $heart_rate \
-#             --isnr $isnr \
-#             --seed_training $seed_training \
-#             --processes $processes \
-#             --gpu $gpu \
-#             --train_fraction $train_fraction \
-#             --factor $factor \
-#             --min_lr $min_lr \
-#             --min_delta $min_delta \
-#             --patience $patience
-#     done
-# done
+for seed_training in "${seed_training_list[@]}"
+do
+    for m in "${m_list[@]}"
+    do
+
+        # Run the training script with the selected configuration
+        python ae_training.py \
+            --n $n \
+            --m $m \
+            --epochs $epochs \
+            --lr $lr \
+            --optimizer $optimizer \
+            --beta $beta \
+            --batch_size $batch_size \
+            --N $N \
+            --fs $fs \
+            --heart_rate $heart_rate \
+            --isnr $isnr \
+            --seed_training $seed_training \
+            --processes $processes \
+            --gpu $gpu \
+            --train_fraction $train_fraction \
+            --factor $factor \
+            --min_lr $min_lr \
+            --min_delta $min_delta \
+            --patience $patience
+    done
+done
 
 
 
