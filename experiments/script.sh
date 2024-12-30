@@ -912,7 +912,8 @@ gpu=4               # GPU index
 # batch_size=50       # Batch size for training
 # min_lr=0.001        # Minimum learning rate
 
-beta=0            # Latent volume regularization weight
+beta=0.1              # Latent volume regularization weight
+gamma=100            # Latent reconstruction regularization weight
 
 optimizer="adam"    # Optimizer for training
 lr=0.001            # Learning rate
@@ -944,6 +945,7 @@ do
             --lr $lr \
             --optimizer $optimizer \
             --beta $beta \
+            --gamma $gamma \
             --batch_size $batch_size \
             --N $N \
             --fs $fs \

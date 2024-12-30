@@ -22,7 +22,7 @@ from models.ae import AE
 logging.basicConfig(level=logging.DEBUG)
 
 def training(
-    n, m, epochs, lr, opt, beta, batch_size, N, fs, heart_rate, isnr,
+    n, m, epochs, lr, opt, beta, gamma, batch_size, N, fs, heart_rate, isnr,
     seed_training, processes, gpu, train_fraction, factor, 
     min_lr, min_delta, patience
 ):
@@ -90,7 +90,7 @@ def training(
     ae = AE(n, m)
     ae.to(device) # move the network to GPU
     model_name = f'AE-N={N}_n={n}_m={m}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}'\
-                 f'_isnr={isnr}_beta={beta}'\
+                 f'_isnr={isnr}_beta={beta}_gamma={gamma}'\
                  f'_epochs={epochs}_bs={batch_size}_opt={opt}_lr={lr}'\
                  f'_tf={train_fraction}_minlr={min_lr}_p={patience}'\
                  f'_mind={min_delta}_seeddata={seed_data}_seedtrain={seed_training}'    
@@ -116,17 +116,23 @@ def training(
         for epoch in range(epochs):
             # train loop
             ae.train()     # Set the model to training mode
-            train_loss = 0.0
+        
             train_rsnr = 0.0
             train_mse = 0.0
             train_vol = 0.0
+            train_mse_y = 0.0
             for X_batch in train_loader:
                 X_batch = X_batch[0].to(device)     # move training data to GPU
+                # generate signals
                 Y_batch = ae.encode(X_batch)
-                output = ae.decode(Y_batch)
-                mean_squared_error = mse(output, X_batch)
+                X_hat = ae.decode(Y_batch)
+                Y_hat = ae.encode(X_hat)
+                # compute metrics
+                mse_X = mse(X_hat, X_batch)
                 latent_volume = torch.mean(torch.square(Y_batch))
-                loss = mean_squared_error + beta * latent_volume
+                mse_Y = mse(Y_hat, Y_batch)
+                loss = mse_X + beta * latent_volume + gamma * mse_Y
+
                 optimizer.zero_grad()     # zeroes the gradient buffers of all parameters
                 loss.backward()     # Backpropagate
                 optimizer.step()     # Update weights
@@ -134,37 +140,44 @@ def training(
                 if np.isnan(loss.item()) or np.isinf(loss.item()):
                     print("Invalid loss, terminating training.")
                     break
-                train_loss += loss.item()
-                train_rsnr += rsnr(output, X_batch).item()
-                train_mse += mean_squared_error.item()
+                train_rsnr += rsnr(X_hat, X_batch).item()
+                train_mse += mse_X.item()
                 train_vol += latent_volume.item()
+                train_mse_y += mse_Y.item()
 
             num_batches = len(train_loader)
-            train_loss = train_loss/num_batches
             train_rsnr = train_rsnr/num_batches
             train_mse = train_mse/num_batches
             train_vol = train_vol/num_batches
+            train_mse_y = train_mse_y/num_batches
+            train_loss = train_mse + beta * train_vol + gamma * train_mse_y
 
             # validation loop
             ae.eval()     # Set the model to evaluation mode
             val_rsnr = 0.0
             val_mse = 0.0
             val_vol = 0.0
+            val_mse_y = 0.0
             with torch.no_grad():     # disables gradient calculation for the validation phase 
                 for X_batch in val_loader:
                     X_batch = X_batch[0].to(device)     # move validation data to GPU
                     # output = ae(X_batch)
+                    # generate signals
                     Y_batch = ae.encode(X_batch)
-                    output = ae.decode(Y_batch)
-                    val_mse += mse(output, X_batch).item()
-                    val_rsnr += rsnr(output, X_batch).item()
+                    X_hat = ae.decode(Y_batch)
+                    Y_hat = ae.encode(X_hat)
+                    # compute metrics
+                    val_mse += mse(X_hat, X_batch).item()
+                    val_rsnr += rsnr(X_hat, X_batch).item()
                     val_vol += torch.mean(torch.square(Y_batch)).item()
+                    val_mse_y += mse(Y_hat, Y_batch).item()
 
             num_batches = len(val_loader)
             val_mse = val_mse/num_batches
             val_rsnr = val_rsnr/num_batches
             val_vol = val_vol/num_batches
-            val_loss = val_mse + beta * val_vol
+            val_mse_y = val_mse_y/num_batches
+            val_loss = val_mse + beta * val_vol + gamma * val_mse_y
             # callbacks
             # reduce lr on plateau
             scheduler.step(val_loss)
@@ -179,8 +192,8 @@ def training(
                 break
 
             print(f"Epoch [{epoch+1}/{epochs}], LR={scheduler.get_last_lr()[0]}"\
-                  f"\nTRAIN Loss: {np.round(train_loss, 8)}   MSE {np.round(train_mse, 8)}   RSNR {np.round(train_rsnr, 3)}   VOL {np.round(train_vol, 8)}"\
-                  f"\nVAL Loss: {np.round(val_loss, 8)}   MSE {np.round(val_mse, 8)}   RSNR {np.round(val_rsnr, 3)}   VOL {np.round(val_vol, 8)} \n")
+                  f"\nTRAIN Loss: {np.round(train_loss, 8)}   MSE {np.round(train_mse, 8)}   RSNR {np.round(train_rsnr, 3)}   VOL {np.round(train_vol, 8)}   MSE Y {np.round(train_mse_y, 8)}"\
+                  f"\nVAL Loss: {np.round(val_loss, 8)}   MSE {np.round(val_mse, 8)}   RSNR {np.round(val_rsnr, 3)}   VOL {np.round(val_vol, 8)}   MSE Y {np.round(val_mse_y, 8)} \n")
 
         # save trained model
         torch.save(ae.state_dict(), model_path)
@@ -200,6 +213,7 @@ def parse_args():
     parser.add_argument('--N', '-N', type=int, default=2000000, help="Number of training instances")
     parser.add_argument('--optimizer', '-O', type=str, default='adam', help="Optimizer for training")
     parser.add_argument('--beta', '-w', type=float, default=0, help="Latent volume regularization weight")
+    parser.add_argument('--gamma', '-q', type=float, default=0, help="Regularization of the latten space reconstruction")
     parser.add_argument('--fs', '-f', type=int, default=256, help="Sampling frequency")
     parser.add_argument('--heart_rate', '-r', type=int, nargs=2, default=(60, 100), help="Heart rate range")
     parser.add_argument('--processes', '-p', type=int, default=48, help="Number of CPU processes")
@@ -225,6 +239,7 @@ if __name__ == '__main__':
         lr=args.lr,
         opt=args.optimizer,
         beta=args.beta,
+        gamma=args.gamma,
         batch_size=args.batch_size,
         N=args.N,
         fs=args.fs,
