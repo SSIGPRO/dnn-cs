@@ -119,7 +119,7 @@ def test(
 
     # ------------------ Init and fit the detector ------------------
     #
-    standard_detectors = ['SPE', 'T2', 'AR', 'OCSVM', 'LOF', 'IF', 'MD', 'energy', 'TV', 'ZC', 'pk-pk']
+    standard_detectors = ['SPE', 'T2', 'AR', 'OC', 'LOF', 'IF', 'MD', 'energy', 'TV', 'ZC', 'pk-pk']
 
     # # evaluate TSOC-based detector
     # if 'TSOC' in detector_type:
@@ -213,9 +213,9 @@ def test(
         elif detector_type == 'AR':
             detector = AR(order)
             detector_label = f'AR_order={order}'
-        elif detector_type == 'OCSVM':
+        elif detector_type == 'OC':
             detector = OCSVM(kernel, nu)
-            detector_label = f'OCSVM_kernel={kernel}_nu={nu}'
+            detector_label = f'OC_krn={kernel}_nu={nu}'
         elif detector_type == 'LOF':
             detector = LOF(neighbors)
             detector_label = f'LOF_neighbors={neighbors}'
@@ -256,7 +256,7 @@ def test(
             sys.exit(0)
 
         # load the scaler
-        if (detector_type in standard_detectors) and (detector_type not in ['LOF', 'OCSVM', 'IF']):
+        if (detector_type in standard_detectors) and (detector_type not in ['LOF', 'OC', 'IF']):
             scaler_name = f'scaler_{name}'
             scaler_path = os.path.join(detectors_dir, f'{scaler_name}.pkl')
             # load scaler
@@ -358,7 +358,7 @@ def test(
             Yko = cs.encode(Xko)
             Zanom = np.concatenate([Y, Yko])
             # center data for not machine learning based detectors
-            if detector_type not in ['LOF', 'OCSVM', 'IF']:
+            if detector_type not in ['LOF', 'OC', 'IF']:
                 Zanom = scaler.transform(Zanom)
         metric_value = detector.test(Zanom, metric='AUC')
         result.loc[anomaly_label] = metric_value
@@ -376,7 +376,7 @@ def parse_args():
     parser.add_argument('-md', '--mode', type=str, choices=['standard', 'rakeness'], required=True, help="Sensing matrix mode: 'standard' or 'rakeness'")
     parser.add_argument('-S', '--seed_matrix', type=int, required=True, help="Seed for random or index for (one of) the best sensing matrix")
     parser.add_argument('-i', '--isnr', type=int, required=True, help="Signal-to-noise ratio (SNR) in dB")
-    parser.add_argument('-dt', '--detector_type', type=str, required=True, help="Type of detector to evaluate (e.g., TSOC, SPE, OCSVM, LOF)")
+    parser.add_argument('-dt', '--detector_type', type=str, required=True, help="Type of detector to evaluate (e.g., TSOC, SPE, OC, LOF)")
     parser.add_argument('-dlt', '--delta', type=float, required=True, help="Anomaly intensity parameter")
     parser.add_argument('-N', '--N_train', type=int, default=2000000, help="Number of training samples")
     parser.add_argument('-tf', '--train_fraction', type=float, default=0.9, help="Fraction of data used for training")
@@ -409,8 +409,8 @@ def parse_args():
     parser.add_argument('-Ss', '--seed_detector', type=int, default=0, help="Random seed associated to the detector")
     parser.add_argument('-k', '--k', type=int, default=5, help="Parameter k for SPE, T2, LOF, or related detectors")
     parser.add_argument('-ord', '--order', type=int, default=1, help="Order parameter for AR detector")
-    parser.add_argument('-krn', '--kernel', type=str, default='rbf', help="Kernel type for OCSVM (e.g., linear, rbf, poly)")
-    parser.add_argument('-nu', '--nu', type=float, default=0.5, help="Anomaly fraction for OCSVM")
+    parser.add_argument('-krn', '--kernel', type=str, default='rbf', help="Kernel type for OC (e.g., linear, rbf, poly)")
+    parser.add_argument('-nu', '--nu', type=float, default=0.5, help="Anomaly fraction for OC")
     parser.add_argument('-nn', '--neighbors', type=int, default=10, help="Number of neighbors for LOF detector")
     parser.add_argument('-est', '--estimators', type=int, default=100, help="Number of estimators for IF detector")
 
