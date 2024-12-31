@@ -323,7 +323,7 @@ def parse_args():
 
     # NNdecoder/TSOC-related arguments
     parser.add_argument('-dmd', '--detector_mode', type=str,
-                         choices=['self-assessment', 'autoencoder', 'sparsity', 'sparsity-threshold', 'self-assessment-complement', 'complement'],
+                         choices=['self-assessment', 'autoencoder', 'sparsity', 'sparsity-threshold', 'self-assessment-complement', 'complement', 'MD'],
                          help="Mode of operation of NNdecoder/TSOC-based detector")
     parser.add_argument('-fct', '--factor', type=float, default=0.2, help="Factor for augmentation or scheduling")
     parser.add_argument('-minlr', '--min_lr', type=float, default=0.001, help="Minimum learning rate for optimizers")
@@ -337,8 +337,8 @@ def parse_args():
     parser.add_argument('-t', '--threshold', type=float, default=0.5, help="Threshold for TSOC detector")
     parser.add_argument('-a', '--alpha', type=float, default=0.5, help="Training loss weight for TSOC detector")
     # AE-related arguments  
-    parser.add_argument('--beta', '-w', type=float, default=0, help="Latent volume regularization weight")
-    parser.add_argument('--gamma', '-q', type=float, default=0, help="Regularization of the latten space reconstruction")
+    parser.add_argument('--beta', '-w', type=float, default=0.0, help="Latent volume regularization weight")
+    parser.add_argument('--gamma', '-q', type=float, default=0.0, help="Regularization of the latten space reconstruction")
 
     # Standard detector-related arguments (optional for specific detectors)
     parser.add_argument('-Ss', '--seed_detector', type=int, default=0, help="Random seed associated to the detector")
