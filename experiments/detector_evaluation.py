@@ -163,7 +163,7 @@ def test(
 
     # evaluate TSOC-based detector
     if detector_type in ['TSOC', 'NNdecoder']:
-        th_string = '_th={threshold}' if detector_type == 'TSOC' else ''
+        th_string = f'_th={threshold}' if detector_type == 'TSOC' else ''
         alpha_string = f'alpha={alpha}' if detector_type == 'TSOC' else ''
         model_name = f'{detector_type}-N={N_train}_n={n}_m={m}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}'\
                      f'_isnr={isnr}_mode={mode}_src={source}_ort={orthogonal}_seedmat={seed_matrix}'\
@@ -237,8 +237,6 @@ def test(
         elif detector_type == 'pk-pk':
             detector = pk_pk()
             detector_label = detector_type
-            
-
         
         name = f'N={N_train}_n={n}_m={m}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}'\
                 f'_isnr={isnr}_mode={mode}_src={source}_ort={orthogonal}_seedmat={seed_matrix}_tf={train_fraction}_seeddet={seed_detector}'\
