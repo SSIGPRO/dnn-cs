@@ -1,8 +1,11 @@
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 import numpy as np
+from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import make_pipeline
 from models.ae import AE
 from wombats.detectors._base import Detector
+from wombats.detectors.gaussian_distribution_based import MD
 
 class AEDetector(Detector):
 
@@ -22,10 +25,30 @@ class AEDetector(Detector):
         # batch_size for evaluation
         self.batch_size = batch_size
         self.mode = mode
+        #  init a Mahalanobis distance-based detector
+        if self.mode=='MD':
+            self.scaler = StandardScaler(with_std=False)
+            self.MD =  MD()
             
     def fit(self, *args, **kwargs):
         # load trained DEC model
         self.ae.load_state_dict(torch.load(self.model_path, weights_only=True))
+        if self.mode=='MD':
+            X_train = kwargs['X_train']
+            if X_train is None:
+                raise ValueError("A training set is required to train the Mahalanobis distance-based detector")
+            self.ae.eval()
+            dataset = TensorDataset(torch.from_numpy(X_train).float())  # Create a dataset from the tensor
+            loader = DataLoader(dataset, batch_size=self.batch_size, shuffle=False)
+            Y_train = torch.empty((X_train.shape[0], self.m))
+            for batch_idx, X_batch in enumerate(loader):
+                X_batch = X_batch[0]
+                if self.gpu is not None:
+                    X_batch = X_batch.to(self.gpu) 
+                Y_batch = self.ae.encode(X_batch)
+                Y_train[self.batch_size*batch_idx: self.batch_size*(batch_idx + 1)] = Y_batch
+            Y_train = self.scaler.fit_transform(Y_train)
+            self.MD = self.MD.fit(Y_train)
         return self
     
     def score(self, X_test):
@@ -73,6 +96,22 @@ class AEDetector(Detector):
                 Yhat = Yhat.detach().numpy()
                 Y = Y.detach().numpy()
             score = np.sqrt(np.sum((Yhat - Y)**2, axis = -1))
+            
+        elif self.mode=='MD':
+            Y = torch.empty((X_test.shape[0], self.m))
+            for batch_idx, X_batch in enumerate(loader):
+                X_batch = X_batch[0]
+                if self.gpu is not None:
+                    X_batch = X_batch.to(self.gpu) 
+                Y_batch = self.ae.encode(X_batch)
+                Y[self.batch_size*batch_idx: self.batch_size*(batch_idx + 1)] = Y_batch
+
+            if self.gpu is not None:
+                Y = Y.cpu().detach().numpy()
+            else:
+                Y = Y.detach().numpy()
+            Y = self.scaler.transform(Y)
+            score = self.MD.score(Y)
 
         else:
             raise ValueError(f'mode "{self.mode}" not supported')
