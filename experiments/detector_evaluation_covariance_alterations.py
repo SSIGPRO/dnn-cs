@@ -44,7 +44,7 @@ logging.basicConfig(level=logging.DEBUG)
 def test(
     n, m, epochs, lr, batch_size, N_train, num_anomalies, basis, fs, heart_rate, isnr, mode, 
     orthogonal, source, seed_matrix, seed_detector, seed_ko, processes, threshold, gpu, train_fraction, factor, alpha, min_lr, 
-    min_delta, patience, opt, detector_type, delta, N_test, detector_mode, 
+    min_delta, patience, opt, detector_type, beta, gamma, delta, N_test, detector_mode, 
     k, order, kernel, nu, neighbors, estimators
 ):
     # ------------------ Constants ------------------
@@ -147,7 +147,7 @@ def test(
     
     elif detector_type == 'AE':
         model_name = f'{detector_type}-N={N_train}_n={n}_m={m}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}'\
-                     f'_isnr={isnr}_epochs={epochs}_bs={batch_size}_opt={opt}_lr={lr}'\
+                     f'_isnr={isnr}_beta={beta}_gamma={gamma}_epochs={epochs}_bs={batch_size}_opt={opt}_lr={lr}'\
                      f'_tf={train_fraction}_minlr={min_lr}_p={patience}'\
                      f'_mind={min_delta}_seeddata={seed_train_data}_seedtrain={seed_training}'
         file_name = f'AUC_cov_alt_detector={model_name}_delta={delta}_seedko={seed_ko}_na={num_anomalies}.pkl'
@@ -336,6 +336,9 @@ def parse_args():
     # TSOC-related arguments  
     parser.add_argument('-t', '--threshold', type=float, default=0.5, help="Threshold for TSOC detector")
     parser.add_argument('-a', '--alpha', type=float, default=0.5, help="Training loss weight for TSOC detector")
+    # AE-related arguments  
+    parser.add_argument('--beta', '-w', type=float, default=0, help="Latent volume regularization weight")
+    parser.add_argument('--gamma', '-q', type=float, default=0, help="Regularization of the latten space reconstruction")
 
     # Standard detector-related arguments (optional for specific detectors)
     parser.add_argument('-Ss', '--seed_detector', type=int, default=0, help="Random seed associated to the detector")
@@ -385,6 +388,8 @@ if __name__ == "__main__":
         patience=args.patience,
         opt=args.optimizer,
         detector_mode=args.detector_mode,
+        beta=args.beta,
+        gamma=args.gamma,
         k=args.k,
         order=args.order,
         kernel=args.kernel,
