@@ -197,9 +197,18 @@ def test(
         model_path = os.path.join(model_folder, f'{model_name}.pth')
         results_path = os.path.join(results_folder, detector_type, detector_mode, file_name)
 
-        detector = AEDetector(n, m, model_path, mode=detector_mode, gpu=device)
         detector_label = model_name
-        detector = detector.fit()
+        if detector_mode in ['MD', 'norm']:
+            detector_path = os.path.join(detectors_dir, 'AE', detector_mode, f'{model_name}.pkl')
+            if os.path.exists(detector_path):
+                with open(detector_path, 'rb') as f:
+                    detector = pickle.load(f)
+            else:
+                RuntimeError(f'Detector\n{model_name}\nhas not been trained')
+                sys.exit(0)
+        else:
+            detector = AEDetector(n, m, model_path, mode=detector_mode, gpu=device)
+            detector = detector.fit()
         
     # evaluate a standard detector
     # init the detector      
@@ -391,7 +400,7 @@ def parse_args():
 
     # NNdecoder/TSOC-related arguments
     parser.add_argument('-dmd', '--detector_mode', type=str,
-                         choices=['self-assessment', 'autoencoder', 'sparsity', 'sparsity-threshold', 'self-assessment-complement', 'complement', 'MD'],
+                         choices=['self-assessment', 'autoencoder', 'sparsity', 'sparsity-threshold', 'self-assessment-complement', 'complement', 'MD', 'norm'],
                          help="Mode of operation of NNdecoder/TSOC-based detector")
     parser.add_argument('-fct', '--factor', type=float, default=0.2, help="Factor for augmentation or scheduling")
     parser.add_argument('-minlr', '--min_lr', type=float, default=0.001, help="Minimum learning rate for optimizers")
