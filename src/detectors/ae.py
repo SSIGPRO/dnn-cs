@@ -26,14 +26,16 @@ class AEDetector(Detector):
         self.batch_size = batch_size
         self.mode = mode
         #  init a Mahalanobis distance-based detector
-        if self.mode=='MD':
+        if self.mode in ['MD', 'norm']:
             self.scaler = StandardScaler(with_std=False)
-            self.MD =  MD()
+            if self.mode=='MD':
+                self.MD =  MD()
             
     def fit(self, *args, **kwargs):
         # load trained DEC model
         self.ae.load_state_dict(torch.load(self.model_path, weights_only=True))
-        if self.mode=='MD':
+        self.ae.eval()
+        if self.mode in ['MD', 'norm']:
             X_train = kwargs['X_train']
             if X_train is None:
                 raise ValueError("A training set is required to train the Mahalanobis distance-based detector")
@@ -47,8 +49,13 @@ class AEDetector(Detector):
                     X_batch = X_batch.to(self.gpu) 
                 Y_batch = self.ae.encode(X_batch)
                 Y_train[self.batch_size*batch_idx: self.batch_size*(batch_idx + 1)] = Y_batch
-            Y_train = self.scaler.fit_transform(Y_train)
-            self.MD = self.MD.fit(Y_train)
+                
+            if self.gpu is not None:
+                Y_train = Y_train.detach().numpy()   
+            self.scaler = self.scaler.fit(Y_train)  
+            if self.mode=='MD':
+                Y_train = self.scaler.transform(Y_train)  
+                self.MD = self.MD.fit(Y_train)
         return self
     
     def score(self, X_test):
@@ -96,8 +103,8 @@ class AEDetector(Detector):
                 Yhat = Yhat.detach().numpy()
                 Y = Y.detach().numpy()
             score = np.sqrt(np.sum((Yhat - Y)**2, axis = -1))
-            
-        elif self.mode=='MD':
+
+        elif self.mode in ['MD', 'norm']:
             Y = torch.empty((X_test.shape[0], self.m))
             for batch_idx, X_batch in enumerate(loader):
                 X_batch = X_batch[0]
@@ -111,7 +118,10 @@ class AEDetector(Detector):
             else:
                 Y = Y.detach().numpy()
             Y = self.scaler.transform(Y)
-            score = self.MD.score(Y)
+            if self.mode == 'MD':
+                score = self.MD.score(Y)
+            else:
+                score = np.sqrt(np.sum(Y**2, axis = -1))
 
         else:
             raise ValueError(f'mode "{self.mode}" not supported')
