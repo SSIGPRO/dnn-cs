@@ -5,7 +5,29 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import make_pipeline
 from models.ae import AE
 from wombats.detectors._base import Detector
-from wombats.detectors.gaussian_distribution_based import MD
+# from wombats.detectors.gaussian_distribution_based import MD
+
+class MD(Detector):
+    
+    def __init__(self, epsilon=1e-7):
+        super().__init__(None)
+        self.epsilon = epsilon
+        
+    def fit(self, X_train):
+        super().fit(X_train)
+        N = X_train.shape[-2]
+        self.Sok = 1/(N-1) * X_train.T @ X_train
+        eigvals, eigvecs = np.linalg.eigh(self.Sok)
+        self.lok = np.clip(eigvals[::-1], a_min=self.epsilon, a_max=None)
+        self.Uok = eigvecs[:, ::-1]
+        # print(self.lok)
+        return self
+        
+    def score(self, X_test):
+        # compute the projections on the major subspace
+        projections = X_test @ self.Uok   
+        return np.sqrt(np.sum(projections**2 / self.lok, axis=1))
+    
 
 class AEDetector(Detector):
 
@@ -118,7 +140,9 @@ class AEDetector(Detector):
             else:
                 Y = Y.detach().numpy()
             Y = self.scaler.transform(Y)
+            # print(self.scaler.mean_)
             if self.mode == 'MD':
+                # print(self.MD.lok)
                 score = self.MD.score(Y)
             else:
                 score = np.sqrt(np.sum(Y**2, axis = -1))
