@@ -72,7 +72,7 @@ class Decoder(ABC):
                     x_hat[i, :] = self._decode(_y)
             else:
                 with mp.Pool(self.processes) as pool:
-                    x_hat = pool.starmap(self._decode, y, chunksize=100)
+                    x_hat = pool.map(self._decode, y, chunksize=100)
                 x_hat = np.stack(x_hat)
         
         return x_hat
