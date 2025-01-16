@@ -37,6 +37,7 @@ from cs import CompressedSensing, generate_sensing_matrix
 from detectors.tsoc import TSOCDetector
 from detectors.NNdecoder import NNdecoderDetector
 from detectors.ae import AEDetector
+from detectors.bpdn import BPDNDetector
 from detectors import detectors_dir
 from models import models_dir
 
@@ -47,7 +48,7 @@ def test(
     n, m, epochs, lr, batch_size, N_train, basis, fs, heart_rate, isnr, mode, 
     orthogonal, source, seed_matrix, seed_detector, seed_ko, processes, threshold, gpu, train_fraction, factor, alpha, min_lr, 
     min_delta, patience, opt, detector_type, beta, gamma, delta, N_test, detector_mode, 
-    k, order, kernel, nu, neighbors, estimators
+    k, order, kernel, nu, neighbors, estimators, sigma
 ):
     # ------------------ Constants ------------------
     corr_name = '96af96a7ddfcb2f6059092c250e18f2a'
@@ -114,7 +115,12 @@ def test(
         seed_matrix = A_dict[seed_matrix]['seed']
         logging.info(f'sensing matrix ({m}, {n}) with seed={seed_matrix} loaded')
 
-    cs = CompressedSensing(A, D, decoder='SO')
+    if detector_type=='BPDN':
+        cs = CompressedSensing(A, D, decoder=detector_type, processes=processes, sigma=sigma)
+    elif detector_type=='TSOC':
+        cs = CompressedSensing(A, D, decoder='SO')
+    else:
+        cs = CompressedSensing(A, D)
     Y = cs.encode(X)  # measurements
 
     # ------------------ Init and fit the detector ------------------
@@ -204,11 +210,21 @@ def test(
                 with open(detector_path, 'rb') as f:
                     detector = pickle.load(f)
             else:
-                RuntimeError(f'Detector\n{model_name}\nhas not been trained')
+                print(f'Detector\n{model_name}\nhas not been trained')
                 sys.exit(0)
         else:
             detector = AEDetector(n, m, model_path, mode=detector_mode, gpu=device)
             detector = detector.fit()
+
+    elif detector_type == 'BPDN':
+        name = f'{detector_type}-n={n}_m={m}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}'\
+                 f'_isnr={isnr}_mode={mode}_src={source}_ort={orthogonal}_seedmat={seed_matrix}_sigma={sigma}'
+        if mode == 'rakeness':
+            name = f'{name}_corr={corr_name}_loc={loc}'
+        file_name = f'AUC_detector={name}_delta={delta}_seedko={seed_ko}.pkl'
+        results_path = os.path.join(results_folder, detector_type, detector_mode, file_name)
+        detector = BPDNDetector(cs, mode=detector_mode)
+        detector_label = name
         
     # evaluate a standard detector
     # init the detector      
@@ -361,7 +377,7 @@ def test(
     for anomaly_label in tqdm.tqdm(anomalies_labels):
         # define the anomalous dataset
         Xko = Xko_df[anomaly_label].values
-        if detector_type in ['TSOC', 'NNdecoder', 'AE'] :
+        if detector_type in ['TSOC', 'NNdecoder', 'AE', 'BPDN'] :
             Zanom = np.concatenate([X, Xko])
         elif detector_type in standard_detectors:
             Yko = cs.encode(Xko)
@@ -416,6 +432,8 @@ def parse_args():
     # AE-related arguments  
     parser.add_argument('--beta', '-w', type=float, default=0.0, help="Latent volume regularization weight")
     parser.add_argument('--gamma', '-q', type=float, default=0.0, help="Regularization of the latten space reconstruction")
+    # BPDN-related arguments 
+    parser.add_argument('-z', '--sigma', type=float, default=1e-4, help="BPDN threshold")
 
     # Standard detector-related arguments (optional for specific detectors)
     parser.add_argument('-Ss', '--seed_detector', type=int, default=0, help="Random seed associated to the detector")
@@ -425,6 +443,8 @@ def parse_args():
     parser.add_argument('-nu', '--nu', type=float, default=0.5, help="Anomaly fraction for OC")
     parser.add_argument('-nn', '--neighbors', type=int, default=10, help="Number of neighbors for LOF detector")
     parser.add_argument('-est', '--estimators', type=int, default=100, help="Number of estimators for IF detector")
+    
+
 
     return parser.parse_args()
 
@@ -471,7 +491,8 @@ if __name__ == "__main__":
         kernel=args.kernel,
         nu=args.nu,
         neighbors=args.neighbors,
-        estimators=args.estimators
+        estimators=args.estimators,
+        sigma=args.sigma
     )
 
 
