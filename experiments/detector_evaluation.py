@@ -54,6 +54,7 @@ def test(
     seed_selection = 0 # seed used to select the best sensing matrix on data geneerated with seed_data_matrix
     M = 1_000
     loc = 0.25
+    encoder_type = 'CS'
 
     # ------------------ Folders ------------------
     model_folder = f'{models_dir}{detector_type}'
@@ -229,7 +230,7 @@ def test(
                 print(f'\nscaler has not been trained')
                 sys.exit(0)
 
-        results_path = os.path.join(results_folder, f'AUC_detector={model_name}_delta={delta}_seedko={seed_ko}.pkl')
+        results_path = os.path.join(results_folder, encoder_type, f'AUC_detector={model_name}_delta={delta}_seedko={seed_ko}.pkl')
 
     os.makedirs(os.path.dirname(results_path), exist_ok=True)
     if os.path.exists(results_path):
@@ -279,12 +280,6 @@ def test(
         dtype=np.float64
     )
 
-    Yko_df = pd.DataFrame(
-        index=np.arange(N_test),
-        columns=pd.MultiIndex.from_product([anomalies_labels, np.arange(m)]),
-        dtype=np.float64
-    )
-
     # generate anomalous data for each anomaly
     logging.info(f"\nGenerating anomalies")
     for anomaly_label, anomaly in anomalies_dict.items():
@@ -295,8 +290,6 @@ def test(
         Xko_std = anomaly.distort(Xstd)
         Xko = Xko_std*std + mean
         Xko_df[anomaly_label] = Xko
-        Yko = cs.encode(Xko)
-        Yko_df[anomaly_label] = Yko
     
     # ------------------ Evaluate the detector for each anomaly ------------------
     # init the results 
