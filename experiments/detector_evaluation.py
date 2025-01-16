@@ -121,47 +121,7 @@ def test(
     # ------------------ Init and fit the detector ------------------
     #
     standard_detectors = ['SPE', 'T2', 'AR', 'OC', 'LOF', 'IF', 'MD', 'energy', 'TV', 'ZC', 'pk-pk']
-
-    # # evaluate TSOC-based detector
-    # if 'TSOC' in detector_type:
-    #     model_name = f'TSOC-N={N_train}_n={n}_m={m}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}'\
-    #                  f'_isnr={isnr}_mode={mode}_src={source}_ort={orthogonal}_seedmat={seed_matrix}'\
-    #                  f'_epochs={epochs}_bs={batch_size}_opt={opt}_lr={lr}'\
-    #                  f'_th={threshold}_tf={train_fraction}_minlr={min_lr}_p={patience}'\
-    #                  f'_mind={min_delta}_seeddata={seed_train_data}_seedtrain={seed_training}'
-    #     file_name = f'AUC_detector={model_name}_delta={delta}_seedko={seed_ko}.pkl'
-    #     subfolder = f'TSOC_{mode}'   
-    #     if mode == 'rakeness':
-    #         model_name = f'{model_name}_corr={corr_name}_loc={loc}'
-    #         subfolder = f'{subfolder}_corr={corr_name}_loc={loc}'
-
-    #     model_path = os.path.join(model_folder, f'alpha={alpha}', f'{model_name}.pth')
-    #     results_path = os.path.join(results_folder, subfolder, f'alpha={alpha}', detector_mode, file_name)
-
-    #     detector = TSOCDetector(cs, model_path, mode=detector_mode, threshold=threshold, gpu=device)
-    #     detector_label = model_name
-    #     detector = detector.fit()
-
-    # # evaluate AE-based detector
-    # elif 'AE' in detector_type:
-    #     model_name = f'AE-N={N_train}_n={n}_m={m}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}'\
-    #                  f'_isnr={isnr}_mode={mode}_src={source}_ort={orthogonal}_seedmat={seed_matrix}'\
-    #                  f'_epochs={epochs}_bs={batch_size}_opt={opt}_lr={lr}'\
-    #                  f'_tf={train_fraction}_minlr={min_lr}_p={patience}'\
-    #                  f'_mind={min_delta}_seeddata={seed_train_data}_seedtrain={seed_training}'
-    #     file_name = f'AUC_detector={model_name}_delta={delta}_seedko={seed_ko}.pkl'
-    #     subfolder = f'AE_{mode}'      
-    #     if mode == 'rakeness':
-    #         model_name = f'{model_name}_corr={corr_name}_loc={loc}'
-    #         subfolder = f'{subfolder}_corr={corr_name}_loc={loc}'
-
-    #     model_path = os.path.join(model_folder, f'{model_name}.pth')
-    #     results_path = os.path.join(results_folder, subfolder, detector_mode, file_name)
-
-    #     detector = AEDetector(cs, model_path, mode=detector_mode, gpu=device)
-    #     detector_label = model_name
-    #     detector = detector.fit()
-
+    
     # evaluate TSOC-based detector
     if detector_type in ['TSOC', 'NNdecoder']:
         th_string = f'_th={threshold}' if detector_type == 'TSOC' else ''
@@ -223,7 +183,6 @@ def test(
         
     # evaluate a standard detector
     # init the detector      
-    # TODO: optimize this part
     elif detector_type in standard_detectors:
         if detector_type == 'SPE':
             detector_label = f'{detector_type}_k={k}'
@@ -334,16 +293,8 @@ def test(
         else:
             anomaly.fit(Xstd)
         Xko_std = anomaly.distort(Xstd)
-        # deltahat = np.mean( (Xstd - Xko_std)**2 )
-        # print(
-        #     f"\t{anomaly_label} delta={deltahat}"
-        #     )
         Xko = Xko_std*std + mean
         Xko_df[anomaly_label] = Xko
-        # deltahat = np.mean( (X - Xko)**2 )
-        # print(
-        #     f"\t{anomaly_label} delta non-std={deltahat}\n"
-        #     )
         Yko = cs.encode(Xko)
         Yko_df[anomaly_label] = Yko
     
