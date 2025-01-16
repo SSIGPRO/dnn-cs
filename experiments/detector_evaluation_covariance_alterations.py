@@ -21,11 +21,6 @@ import logging
 
 from wombats.anomalies.invariant import SpectralAlteration, PrincipalSubspaceAlteration
 
-from wombats.detectors.feature_based import *
-from wombats.detectors.pca_based import *
-from wombats.detectors.gaussian_distribution_based import *
-from wombats.detectors.ml_based import *
-
 root = os.path.dirname(os.path.dirname(os.path.realpath('__file__')))
 sys.path.insert(0, os.path.join(root, 'src'))
 
@@ -185,44 +180,24 @@ def test(
         detector_label = name
         
     # evaluate a standard detector
-    # init the detector      
+    # init the detector
+    # # TODO: optimize this part (I don't need to init the detectors and the detector_label can be define more efficiently)      
     elif detector_type in standard_detectors:
         if detector_type == 'SPE':
-            detector = SPE(k)
-            detector_label = f'SPE_k={k}'
+            detector_label = f'{detector_type}_k={k}'
         elif detector_type == 'T2':
-            detector = T2(k)
-            detector_label = f'T2_k={k}'
+            detector_label = f'{detector_type}_k={k}'
         elif detector_type == 'AR':
-            detector = AR(order)
-            detector_label = f'AR_order={order}'
+            detector_label = f'{detector_type}_order={order}'
         elif detector_type == 'OC':
-            detector = OCSVM(kernel, nu)
-            detector_label = f'OC_krn={kernel}_nu={nu}'
+            detector_label = f'{detector_type}_krn={kernel}_nu={nu}'
         elif detector_type == 'LOF':
-            detector = LOF(neighbors)
-            detector_label = f'LOF_neighbors={neighbors}'
+            detector_label = f'{detector_type}_neighbors={neighbors}'
         elif detector_type == 'IF':
-            detector = IF(estimators)
-            detector_label = f'IF_estimators={estimators}'
-        elif detector_type == 'MD':
-            detector = MD()
+            detector_label = f'{detector_type}_estimators={estimators}'
+        else:
             detector_label = detector_type
-        elif detector_type == 'energy':
-            detector = energy()
-            detector_label = detector_type
-        elif detector_type == 'TV':
-            detector = TV()
-            detector_label = detector_type
-        elif detector_type == 'ZC':
-            detector = ZC()
-            detector_label = detector_type
-        elif detector_type == 'pk-pk':
-            detector = pk_pk()
-            detector_label = detector_type
-            
-
-        
+                   
         name = f'N={N_train}_n={n}_m={m}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}'\
                 f'_isnr={isnr}_mode={mode}_src={source}_ort={orthogonal}_seedmat={seed_matrix}_tf={train_fraction}_seeddet={seed_detector}'\
                 f'_seeddata={seed_train_data}_seedtrain={seed_training}'
