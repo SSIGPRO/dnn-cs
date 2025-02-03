@@ -38,7 +38,6 @@ def test(
     corr_name = '96af96a7ddfcb2f6059092c250e18f2a'
     seed_train_data = 11
     seed_test_data = 66
-    M = 1_000
     loc = 0.25
 
     # ------------------ Folders ------------------

@@ -40,7 +40,6 @@ def test(
     support_method = 'TSOC'
     seed_train_data = 11
     seed_test_data = 66
-    M = 1_000
     loc = 0.25
 
     # ------------------ Folders ------------------
