@@ -37,7 +37,10 @@ def test( n, m, N_test, fs, heart_rate, isnr, basis,
     # ------------------ Constants ------------------
     corr_name = '96af96a7ddfcb2f6059092c250e18f2a'
     seed_test_data = 66
-    M = 1_000
+    if m==48:
+        M = 1_000 # number of evaluated sensing matrices
+    else:
+        M = 100
     loc = 0.25
     seed_data_matrix = 0
     seed_selection = 0
