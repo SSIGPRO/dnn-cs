@@ -697,35 +697,6 @@ def main(**bundle):
 
     ###### FINE TUNE ON REAL ECG
 
-    if fine_tune:
-        
-        ### LOAD REAL ECG
-        db_dir = 'ecgiddb'
-        dl_dir = 'miao'
-        overlap = n//5
-        
-        ecg_real, ecg_real_filt = my_funcs.load_real_ecg(db_dir, dl_dir, n, overlap, fs)
-
-        transform=my_funcs.AddGaussianNoise(std=white_noise_var)
-        
-        df_loaders = my_funcs.from_ecg_to_df_loader(ecg_real, 
-                          {mode_A: A}, 
-                          in_channels=in_channels, 
-                          str_x_as_input=str_x_as_input, 
-                          batch_size=batch_size,
-                          transform=transform,)
-        
-        df_loaders_filt = my_funcs.from_ecg_to_df_loader(ecg_real_filt, 
-                          {mode_A: A}, 
-                          in_channels=in_channels, 
-                          str_x_as_input=str_x_as_input, 
-                          batch_size=batch_size,
-                          transform=transform,)
-        
-
-        ### FREEZE LAYERS
-
-        model.
 
 
     print(f'TEST Loss: {test_loss}, SNR: {snr_:.2f}')
