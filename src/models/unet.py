@@ -12,6 +12,26 @@ IMPROVEMENTS:
 - Partial Convolution (https://github.com/NVIDIA/partialconv) which correct the errors introduced by zero-padding
 """
 
+class CS_enc(nn.Module):
+    def __init__(self, n, m):
+        super().__init__()
+
+        self.enc = nn.Linear(n, m, bias=False),
+
+    def forward(self, x):
+        return self.enc(x)
+    
+class CS_dec_first_guess(nn.Module):
+    def __init__(self, m, n, bias=False):
+        super().__init__()
+
+        self.expand = nn.Linear(m, n, bias=bias),
+
+    def forward(self, x):
+        return self.expand(x)
+
+
+
 class DoubleConv(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size=(3, ), batch_norm=False, 
                  padding=None):
@@ -180,14 +200,36 @@ class UpSeq(nn.Module):
 class UNet(nn.Module):
     def __init__(self, in_channels, out_channels, expanded_channels, 
                  steps_num=4, kernel_size=3, simple_pool=True,
-                 use_batch_norm=False, residual=False):
+                 use_batch_norm=False, residual=False, x_as_input=False, 
+                 n=None, m=None, A_init=None, A_freeze=True, verbose=False):
         super().__init__()
 
         self.residual = residual
         self.out_channels = out_channels
         self.in_channels = in_channels
-        # if residual:
-        #     assert in_channels == out_channels, 'if "residual==True", must have "in_channels==num_classes"'
+        self.x_as_input = x_as_input
+
+        if x_as_input:
+            assert n is not None and m is not None, 'must specify "m" and "n"'
+            self.encoder = nn.Linear(n, m, bias=False)
+            self.dec_first_guess = nn.Linear(m, n, bias=False)
+            if A_init is not None:
+                assert A_init.shape == (m, n), 'A shape must be (m, n)'
+                # check A type (torch)
+
+                if type(A_init) is not torch.Tensor:
+                    A_init = torch.tensor(A_init, dtype=torch.float32)
+
+                self.encoder.weight.data = A_init
+                self.dec_first_guess.weight.data = A_init.transpose(-1, -2)
+                self.encoder.weight.requires_grad = not(A_freeze)
+                self.dec_first_guess.weight.requires_grad = not(A_freeze)
+
+                if verbose:
+                    print(f'A init: {A_init != None}. A grad: {self.encoder.weight.requires_grad}')
+
+                pass
+
 
         self.down = DownSeq(
             in_channels=in_channels,
@@ -208,11 +250,17 @@ class UNet(nn.Module):
 
         self.out = nn.Conv1d(in_channels=expanded_channels, out_channels=in_channels, kernel_size=1)
         if self.out_channels != self.in_channels:
-            self.out2 = nn.Conv1d(in_channels=expanded_channels, out_channels=out_channels, kernel_size=1)
+            self.out2 = nn.Conv1d(in_channels=in_channels, out_channels=out_channels, kernel_size=1)
 
     def forward(self, x_input):
 
-        x, down_list = self.down(x_input)
+        if self.x_as_input:
+            x = self.encoder(x_input)
+            x_first_guess = self.dec_first_guess(x)
+        else:
+            x_first_guess = x_input
+
+        x, down_list = self.down(x_first_guess)
 
         x = self.bottle_neck(x)
         
@@ -221,7 +269,7 @@ class UNet(nn.Module):
         x = self.out(x)
 
         if self.residual:
-            x = x_input - x
+            x = x_first_guess  - x
 
         if self.out_channels != self.in_channels:
             x = self.out2(x)
