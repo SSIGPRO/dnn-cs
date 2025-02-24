@@ -55,7 +55,8 @@ logging.basicConfig(
 
 ###### STANDARD PARAMETERS ######
 
-corr_str = '96af96a7ddfcb2f6059092c250e18f2a' # name of corr matrix (file)
+corr_str_default = '96af96a7ddfcb2f6059092c250e18f2a' # name of corr matrix (file)
+# corr_str_default = '970288fa42dcdddb75bd1e2032afe4a6'
 N_ecg = 10_000 # number of ecg samples in dataset
 fs = 256 # sampling freq
 hr = (60, 100) # heart rate
@@ -117,6 +118,12 @@ def cmdline_args():
         "--seedecg", type=int, default=seed_ecg_default,
         help="seed for the generation of ecg dataset (default: %(default)s)"
     )
+    parser.add_argument(
+        "--corr_str", type=str, default=corr_str_default,
+        help="string that identifies correlation matrix (default: %(default)s)"
+    )
+
+    
 
     parser.add_argument(
         '-v', '--verbose', action='count', default=0,
@@ -126,11 +133,11 @@ def cmdline_args():
     return parser.parse_args()
 
 
-def main(n, m, mode_A, N_try_A, N_keep_A, seed_A, seed_ecg):
+def main(n, m, mode_A, N_try_A, N_keep_A, seed_A, seed_ecg, corr_str):
 
     str_ecg_setting = f'ecg_N={N_ecg}_n={n}_fs={fs}_hr={hr[0]}-{hr[1]}'\
                       f'_isnr={isnr}_seed={seed_ecg}'
-    
+    print(str_ecg_setting)
     path_ecg = os.path.join(dataset_dir, str_ecg_setting + '.pkl')
     
     str_A_setting = f'sensing_matrix_M={N_try_A}_m={m}_mode={mode_A}_seed={seed_A}'
@@ -139,8 +146,7 @@ def main(n, m, mode_A, N_try_A, N_keep_A, seed_A, seed_ecg):
     
     save_A_folder = os.path.join(dataset_dir, str_ecg_setting, 'A_Filippo')
     save_A_dest = os.path.join(save_A_folder, str_A_setting+'.pkl')
-    print(N_ecg)
-    print(corr_str)
+
     # standard correlation matrix computed from ecg dataset with isnr=0dB
     path_corr = os.path.join(dataset_dir, 'correlation', corr_str + '.pkl')
 
@@ -171,7 +177,6 @@ def main(n, m, mode_A, N_try_A, N_keep_A, seed_A, seed_ecg):
                         correlation=corr,
                         loc=loc, 
                         seed=seed_trial)
-        
         B = A_trial @ D
 
         with mp.Pool(processes=workers_mp) as pool:
@@ -206,6 +211,7 @@ def main(n, m, mode_A, N_try_A, N_keep_A, seed_A, seed_ecg):
 
     with open(save_A_dest, 'wb') as f:
         pkl.dump(list_save, f)
+        print(save_A_dest)
 
     print(f'best {N_keep_A} (over {N_try_A}) have been saved for m = {m} in',
           f'{save_A_dest}')
@@ -238,4 +244,5 @@ if __name__ == '__main__':
         args.Nkeep,
         args.seedA,
         args.seedecg,
+        args.corr_str,
     )
