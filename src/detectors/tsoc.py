@@ -9,6 +9,23 @@ from cs.decoders import SupportOracle
 from models.tsoc import TSOC
 from wombats.detectors._base import Detector
 
+class MD_rtol(Detector):
+    
+    def __init__(self, rtol=1e-6):
+        super().__init__(None)
+        self.rtol = rtol
+        
+    def fit(self, X_train):
+        super().fit(X_train)
+        N = X_train.shape[-2]
+        self.Sok = 1/(N-1) * X_train.T @ X_train
+        self.Sokinv = linalg.pinvh(self.Sok, rtol=self.rtol)
+        return self
+        
+    def score(self, X_test):
+        score = np.sqrt(np.sum((X_test @ self.Sokinv) * X_test, axis=-1)) 
+        return score 
+
 class TSOCDetector(Detector):
 
     def __init__(self, cs, model_path, batch_size=100, mode='self-assessment', threshold=0.5, filter=True, gpu=None):
@@ -30,19 +47,12 @@ class TSOCDetector(Detector):
         # batch_size for evaluation
         self.batch_size = batch_size
         self.mode = mode
-            
-    def fit(self, *args, **kwargs):
-        # load trained TSOC model
-        self.tsoc.load_state_dict(torch.load(self.model_path, weights_only=True))
-        return self
-    
-    def score(self, X_test):
-        # encode test data
-        Y = self.cs.encode(X_test)
 
+    def _estimate_support(self, Y):
+        
         # compute support estimation
         self.tsoc.eval()  
-        O = torch.empty(X_test.shape)
+        O = torch.empty((Y.shape[0], self.n))
         dataset = TensorDataset(torch.from_numpy(Y).float())  # Create a dataset from the tensor
         loader = DataLoader(dataset, batch_size=self.batch_size, shuffle=False)
         for batch_idx, Y_batch in enumerate(loader):
@@ -63,6 +73,46 @@ class TSOCDetector(Detector):
             th = th.reshape(-1, 1)
             index = O < th
             O[index] = 0
+        return O
+            
+    def fit(self, *args, **kwargs):
+        # load trained TSOC model
+        self.tsoc.load_state_dict(torch.load(self.model_path, weights_only=True))
+        if 'X_train' in kwargs:
+            print('fitting')
+            X_train = kwargs['X_train']
+            Y = self.cs.encode(X_train)
+            O = self._estimate_support(Y)
+            # calculate supports
+            Zhat = O > self.threshold
+            # reconstruct
+            Xhat = self.cs.decode(list(zip(Y, Zhat)))            
+
+            # fit MD on reconstructed signal
+            self.mean_xhat = np.mean(Xhat, axis=0)
+            self.MD_xhat = MD_rtol().fit(Xhat-self.mean_xhat)
+
+            # fit MD on the difference between reconstructed y and received y
+            # encode reconstructed data
+            Yhat = self.cs.encode(Xhat)
+            difference = Yhat - Y
+            self.mean_ydiff = np.mean(difference, axis=0)
+            self.MD_ydiff = MD_rtol().fit(difference - self.mean_ydiff)
+
+            # MD on the y computed through the complement
+            # compute the complement
+            Q, _ = np.linalg.qr(self.cs.A.T, mode='complete')
+            self.Ac = Q[:, self.m:].T
+            Ybar = Xhat @ self.Ac.T
+            self.mean_ycompl = np.mean(Ybar, axis=0)
+            self.MD_ycompl = MD_rtol().fit(Ybar - self.mean_ycompl)
+
+        return self
+    
+    def score(self, X_test):
+        # encode test data
+        Y = self.cs.encode(X_test)
+        O = self._estimate_support(Y)
 
         # calculate supports
         Zhat = O > self.threshold
@@ -73,36 +123,60 @@ class TSOCDetector(Detector):
         elif self.mode == 'sparsity-threshold':
             score = np.mean(Zhat, axis=-1)
 
-        elif self.mode in ['autoencoder', 'self-assessment', 'self-assessment-complement', 'complement']:
+        elif self.mode in [
+                    'autoencoder',
+                    'self-assessment',
+                    'self-assessment-MD'
+                    'complement',
+                    'complement-MD',
+                    'self-assessment-complement',
+                    'self-assessment-complement-MD'
+                  ]:
             # reconstruct data
-            # Xhat = np.empty(X_test.shape)
-            # for i in range(X_test.shape[0]):
-            #     Xhat[i] = self.cs.decode_with_support(Y[i], Zhat[i])
             Xhat = self.cs.decode(list(zip(Y, Zhat)))
 
             if self.mode=='autoencoder':
                 # estiamte the difference between the reconstructed data and data
                 score = np.sqrt(np.sum((Xhat - X_test)**2, axis = -1))
 
-            elif self.mode=='self-assessment':
+            elif self.mode in ['self-assessment', 'self-assessment-MD', 'MDxhat']:
                 # encode reconstructed test data
                 Yhat = self.cs.encode(Xhat)
                 # estiamte the difference between the encoded reconstructed data and encoded data 
-                score = np.sqrt(np.sum((Yhat - Y)**2, axis = -1))
+                difference = Yhat - Y
+                if self.mode == 'self-assessment':
+                    score = np.sqrt(np.sum((difference)**2, axis = -1))
+                elif self.mode == 'self-assessment-MD':
+                    score = self.MD_ydiff.score(difference - self.mean_ydiff)
+                else:
+                    score = self.MD_xhat.score(Xhat - self.mean_xhat)
 
-            elif 'complement' in self.mode:
+            elif self.mode in ['complement', 'complement-MD']:
                 # find the orthogonal complement of A
                 Q, _ = np.linalg.qr(self.cs.A.T, mode='complete')
                 Ac = Q[:, self.m:].T
 
                 # estimate the energy along the complement
                 Ybar = Xhat @ Ac.T
-                score = np.mean(Ybar**2, axis = -1)
+
+                if self.mode == 'complement':
+                    score = np.sqrt(np.sum((Ybar)**2, axis = -1))
+                else:
+                    score = self.MD_ycompl.score(Ybar - self.mean_ycompl)
             
-                if self.mode=='self-assessment-complement':
-                    Yhat = self.cs.encode(Xhat)
-                    # combine two scores
-                    score = score + np.mean((Yhat - Y)**2, axis = -1) 
+            elif self.mode in ['self-assessment-complement', 'self-assessment-complement-MD']:
+                Yhat = self.cs.encode(Xhat)
+                difference = Yhat - Y
+                Q, _ = np.linalg.qr(self.cs.A.T, mode='complete')
+                Ac = Q[:, self.m:].T
+                Ybar = Xhat @ Ac.T
+                # combine two scores
+                if self.mode == 'self-assessment-complement':
+                    score = np.sqrt(np.sum((Ybar)**2, axis = -1)) \
+                        + np.sqrt(np.sum((difference)**2, axis = -1)) 
+                else:
+                    score = self.MD_ydiff.score(difference - self.mean_ydiff) \
+                        + self.MD_ycompl.score(Ybar - self.mean_ycompl)
 
         else:
             raise ValueError(f'mode "{self.mode}" not supported')
