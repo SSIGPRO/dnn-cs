@@ -19,6 +19,9 @@ import tqdm
 import argparse
 import logging
 
+import torch
+from torch.utils.data import DataLoader, TensorDataset
+
 from wombats.anomalies.increasing import *
 from wombats.anomalies.invariant import *
 from wombats.anomalies.decreasing import *
@@ -35,6 +38,8 @@ from detectors.ae import AEDetector
 from detectors.bpdn import BPDNDetector
 from detectors import detectors_dir
 from models import models_dir
+from models.tsoc import TSOC
+
 
 
 logging.basicConfig(level=logging.DEBUG)
@@ -52,7 +57,11 @@ def test(
     seed_training = 0 # seed for training data split
     seed_data_matrix = 0 # seed used to generate data for sensing matrix selection
     seed_selection = 0 # seed used to select the best sensing matrix on data geneerated with seed_data_matrix
-    M = 1_000
+    # M = 1_000
+    if m==48:
+        M = 1_000 # number of evaluated sensing matrices
+    else:
+        M = 100
     loc = 0.25
     encoder_type = 'CS'
 
@@ -141,13 +150,26 @@ def test(
         model_path = os.path.join(model_folder, alpha_string, f'{model_name}.pth')
         results_path = os.path.join(results_folder, subfolder, alpha_string, detector_mode, file_name)
 
+        detector_label = model_name
         if detector_type == 'TSOC':
-            detector = TSOCDetector(cs, model_path, mode=detector_mode,
-                                     threshold=threshold, filter=True, gpu=device)
+            if detector_mode in ['self-assessment-MD', 'complement-MD', 'self-assessment-complement-MD', 'self-assessment-complement-MD-CDF']:
+                detector_path = os.path.join(detectors_dir, detector_type, f'{model_name}.pkl')
+                if os.path.exists(detector_path):
+                    with open(detector_path, 'rb') as f:
+                        detector = pickle.load(f)
+                else:
+                    print(f'Detector\n{model_name}\nhas not been trained')
+                    sys.exit(0)
+                detector.mode = detector_mode
+            else:
+                detector = TSOCDetector(cs, model_path, mode=detector_mode,
+                                        threshold=threshold, filter=True, gpu=device)
+                detector = detector.fit()
         else:
             detector = NNdecoderDetector(cs, model_path, mode=detector_mode, gpu=device)
-        detector_label = model_name
-        detector = detector.fit()
+            detector = detector.fit()
+        
+        
     
     elif detector_type == 'AE':
         model_name = f'{detector_type}-N={N_train}_n={n}_m={m}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}'\
@@ -160,8 +182,8 @@ def test(
         results_path = os.path.join(results_folder, detector_type, detector_mode, file_name)
 
         detector_label = model_name
-        if detector_mode in ['MD', 'norm']:
-            detector_path = os.path.join(detectors_dir, 'AE', detector_mode, f'{model_name}.pkl')
+        if detector_mode in ['MDhat', 'MD', 'norm', 'OC']:
+            detector_path = os.path.join(detectors_dir, detector_type, detector_mode, f'{model_name}.pkl')
             if os.path.exists(detector_path):
                 with open(detector_path, 'rb') as f:
                     detector = pickle.load(f)
@@ -337,7 +359,10 @@ def parse_args():
 
     # NNdecoder/TSOC-related arguments
     parser.add_argument('-dmd', '--detector_mode', type=str,
-                         choices=['self-assessment', 'autoencoder', 'sparsity', 'sparsity-threshold', 'self-assessment-complement', 'complement', 'MD', 'norm'],
+                         choices=['self-assessment', 'autoencoder', 'sparsity', 'sparsity-threshold',
+                                   'self-assessment-complement', 'complement', 'MD', 'norm', 'OC',
+                                     'self-assessment2', 'self-assessment3', 'MDhat',
+                                     'self-assessment-MD', 'complement-MD', 'self-assessment-complement-MD'],
                          help="Mode of operation of NNdecoder/TSOC-based detector")
     parser.add_argument('-fct', '--factor', type=float, default=0.2, help="Factor for augmentation or scheduling")
     parser.add_argument('-minlr', '--min_lr', type=float, default=0.001, help="Minimum learning rate for optimizers")
