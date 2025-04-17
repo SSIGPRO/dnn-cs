@@ -145,7 +145,7 @@ def test(
 
         detector_label = model_name
         if detector_type == 'TSOC':
-            if detector_mode in ['self-assessment-MD', 'complement-MD', 'self-assessment-complement-MD']:
+            if detector_mode in ['self-assessment-MD', 'complement-MD', 'self-assessment-complement-MD', 'self-assessment-complement-MD-CDF']:
                 detector_path = os.path.join(detectors_dir, detector_type, f'{model_name}.pkl')
                 if os.path.exists(detector_path):
                     with open(detector_path, 'rb') as f:
@@ -342,7 +342,8 @@ def parse_args():
                          choices=['self-assessment', 'autoencoder', 'sparsity', 'sparsity-threshold',
                                    'self-assessment-complement', 'complement', 'MD', 'norm', 'OC',
                                      'self-assessment2', 'self-assessment3', 'MDhat', 'MDhat2', 'MDhat3',
-                                     'self-assessment-MD', 'complement-MD', 'self-assessment-complement-MD'],
+                                     'self-assessment-MD', 'complement-MD', 'self-assessment-complement-MD',
+                                     'self-assessment-complement-MD-CDF'],
                          help="Mode of operation of NNdecoder/TSOC-based detector")
     parser.add_argument('-fct', '--factor', type=float, default=0.2, help="Factor for augmentation or scheduling")
     parser.add_argument('-minlr', '--min_lr', type=float, default=0.001, help="Minimum learning rate for optimizers")
