@@ -35,6 +35,7 @@ sys.path.insert(0, os.path.join(root, 'src'))
 
 from cs.wavelet_basis import wavelet_basis
 from cs import CompressedSensing, generate_sensing_matrix
+from detectors.kde import KDE
 from detectors import detectors_dir
 from dataset import dataset_dir
 
@@ -44,7 +45,7 @@ logging.basicConfig(level=logging.DEBUG)
 def test(
     n, m, N_train, basis, fs, heart_rate, isnr, mode, train_fraction,
     orthogonal, source, seed_matrix, seed_detector, detector_type, 
-    k, order, kernel, nu, neighbors, estimators
+    k, order, kernel, kernel2, nu, neighbors, estimators, bandwidth
 ):
     # ------------------ Constants ------------------
     corr_name = '96af96a7ddfcb2f6059092c250e18f2a'
@@ -52,7 +53,12 @@ def test(
     seed_training = 0 # seed for training data split
     seed_data_matrix = 0
     seed_selection = 0
-    M = 1_000
+    if m==48:
+        M = 1_000 # number of evaluated sensing matrices
+    else:
+        M = 100
+    if bandwidth == 0:
+        bandwidth = 'silverman'
     loc = 0.25
 
     # ------------------ Show parameter values ------------------
@@ -122,6 +128,9 @@ def test(
     elif detector_type == 'IF':
         detector = IF(estimators)
         detector_label = f'IF_estimators={estimators}'
+    elif detector_type == 'KDE':
+        detector = KDE(kernel2, bandwidth)
+        detector_label = f'KDE_krn={kernel2}_bw={bandwidth}'
     elif detector_type == 'MD':
         detector = MD()
         detector_label = detector_type
@@ -146,7 +155,7 @@ def test(
         name = f'{name}_corr={corr_name}_loc={loc}'
 
     # scale the data for non-machine learning-based detectors
-    if detector_type not in ['LOF', 'OC', 'IF']:
+    if detector_type not in ['LOF', 'OC', 'IF', 'KDE']:
         scaler_name = f'scaler_{name}'
         scaler_path = os.path.join(detectors_dir, f'{scaler_name}.pkl')
         # load scaler
@@ -211,7 +220,9 @@ def parse_args():
     parser.add_argument('-k', '--k', type=int, default=5, help="Parameter k for SPE, T2, LOF, or related detectors")
     parser.add_argument('-ord', '--order', type=int, default=1, help="Order parameter for AR detector")
     parser.add_argument('-krn', '--kernel', type=str, default='rbf', help="Kernel type for OC (e.g., linear, rbf, poly)")
+    parser.add_argument('-krn2', '--kernel2', type=str, default='gaussian', help="Kernel type for KDE")
     parser.add_argument('-nu', '--nu', type=float, default=0.5, help="Anomaly fraction for OC")
+    parser.add_argument('-bw', '--bandwidth', type=float, default=0.1, help="Bandwidth for KDE")
     parser.add_argument('-nn', '--neighbors', type=int, default=20, help="Number of neighbors for LOF detector")
     parser.add_argument('-est', '--estimators', type=int, default=100, help="Number of estimators for IF detector")
 
@@ -240,9 +251,11 @@ if __name__ == "__main__":
         k=args.k,
         order=args.order,
         kernel=args.kernel,
+        kernel2=args.kernel2,
         nu=args.nu,
         neighbors=args.neighbors,
-        estimators=args.estimators
+        estimators=args.estimators,
+        bandwidth=args.bandwidth
     )
 
 
