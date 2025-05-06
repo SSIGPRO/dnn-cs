@@ -33,6 +33,7 @@ from dataset import dataset_dir
 from cs.wavelet_basis import wavelet_basis
 from cs import CompressedSensing, generate_sensing_matrix
 from detectors.tsoc import TSOCDetector
+from detectors.kde import KDE
 from detectors.NNdecoder import NNdecoderDetector
 from detectors.ae import AEDetector
 from detectors.bpdn import BPDNDetector
@@ -48,7 +49,7 @@ def test(
     n, m, epochs, lr, batch_size, N_train, basis, fs, heart_rate, isnr, mode, 
     orthogonal, source, seed_matrix, seed_detector, seed_ko, processes, threshold, gpu, train_fraction, factor, alpha, min_lr, 
     min_delta, patience, opt, detector_type, beta, gamma, delta, N_test, detector_mode, 
-    k, order, kernel, nu, neighbors, estimators, sigma
+    k, order, kernel, kernel2, nu, neighbors, estimators, bandwidth, sigma
 ):
     # ------------------ Constants ------------------
     corr_name = '96af96a7ddfcb2f6059092c250e18f2a'
@@ -63,6 +64,8 @@ def test(
     else:
         M = 100
     loc = 0.25
+    if bandwidth == 0:
+        bandwidth = 'silverman'
     encoder_type = 'CS'
 
     # ------------------ Folders ------------------
@@ -130,7 +133,7 @@ def test(
 
     # ------------------ Init and fit the detector ------------------
     #
-    standard_detectors = ['SPE', 'T2', 'AR', 'OC', 'LOF', 'IF', 'MD', 'energy', 'TV', 'ZC', 'pk-pk']
+    standard_detectors = ['SPE', 'T2', 'AR', 'OC', 'LOF', 'KDE', 'IF', 'MD', 'energy', 'TV', 'ZC', 'pk-pk']
     
     # evaluate TSOC-based detector
     if detector_type in ['TSOC', 'NNdecoder']:
@@ -219,6 +222,8 @@ def test(
             detector_label = f'{detector_type}_neighbors={neighbors}'
         elif detector_type == 'IF':
             detector_label = f'{detector_type}_estimators={estimators}'
+        elif detector_type == 'KDE':
+            detector_label = f'{detector_type}_krn={kernel2}_bw={bandwidth}'
         else:
             detector_label = detector_type
         
@@ -240,7 +245,7 @@ def test(
             sys.exit(0)
 
         # load the scaler
-        if (detector_type in standard_detectors) and (detector_type not in ['LOF', 'OC', 'IF']):
+        if (detector_type in standard_detectors) and (detector_type not in ['LOF', 'OC', 'IF', 'KDE']):
             scaler_name = f'scaler_{name}'
             scaler_path = os.path.join(detectors_dir, f'{scaler_name}.pkl')
             # load scaler
@@ -326,7 +331,7 @@ def test(
             Yko = cs.encode(Xko)
             Zanom = np.concatenate([Y, Yko])
             # center data for not machine learning based detectors
-            if detector_type not in ['LOF', 'OC', 'IF']:
+            if detector_type not in ['LOF', 'OC', 'IF', 'KDE']:
                 Zanom = scaler.transform(Zanom)
         metric_value = detector.test(Zanom, metric='AUC')
         result.loc[anomaly_label] = metric_value
@@ -390,6 +395,8 @@ def parse_args():
     parser.add_argument('-nu', '--nu', type=float, default=0.5, help="Anomaly fraction for OC")
     parser.add_argument('-nn', '--neighbors', type=int, default=10, help="Number of neighbors for LOF detector")
     parser.add_argument('-est', '--estimators', type=int, default=100, help="Number of estimators for IF detector")
+    parser.add_argument('-krn2', '--kernel2', type=str, default='gaussian', help="Kernel type for KDE")
+    parser.add_argument('-bw', '--bandwidth', type=float, default=0.1, help="Bandwidth for KDE")
     
 
 
@@ -436,9 +443,11 @@ if __name__ == "__main__":
         k=args.k,
         order=args.order,
         kernel=args.kernel,
+        kernel2=args.kernel2,
         nu=args.nu,
         neighbors=args.neighbors,
         estimators=args.estimators,
+        bandwidth=args.bandwidth,
         sigma=args.sigma
     )
 
