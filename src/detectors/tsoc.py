@@ -2,6 +2,7 @@ import torch
 from torch.utils.data import DataLoader, TensorDataset
 import numpy as np
 from scipy import linalg
+from statsmodels.distributions.empirical_distribution import ECDF
 from cs.wavelet_basis import wavelet_basis
 from cs.utils import reconstructor
 from cs import CompressedSensing, generate_sensing_matrix
@@ -25,6 +26,25 @@ class MD_rtol(Detector):
     def score(self, X_test):
         score = np.sqrt(np.sum((X_test @ self.Sokinv) * X_test, axis=-1)) 
         return score 
+    
+class CDF():
+    def __init__(self, norm=True):
+        self.norm = norm
+    
+    def fit(self, score_train):
+        self.ecdf = ECDF(score_train)
+        self.mean = self.ecdf(np.mean(score_train))
+        return self
+    
+    def predict(self, score_test):
+        cdf = self.ecdf(score_test)
+        if self.norm:
+            # Normalize CDF values
+            normalized = np.maximum(0, (cdf - self.mean) / (1 - self.mean))
+            return normalized
+        else:
+            return cdf
+    
 
 class TSOCDetector(Detector):
 
@@ -98,6 +118,7 @@ class TSOCDetector(Detector):
             difference = Yhat - Y
             self.mean_ydiff = np.mean(difference, axis=0)
             self.MD_ydiff = MD_rtol().fit(difference - self.mean_ydiff)
+            self.CDF_ydiff = CDF().fit(self.MD_ydiff.score(difference - self.mean_ydiff))
 
             # MD on the y computed through the complement
             # compute the complement
@@ -106,6 +127,7 @@ class TSOCDetector(Detector):
             Ybar = Xhat @ self.Ac.T
             self.mean_ycompl = np.mean(Ybar, axis=0)
             self.MD_ycompl = MD_rtol().fit(Ybar - self.mean_ycompl)
+            self.CDF_ycompl = CDF().fit(self.MD_ycompl.score(Ybar - self.mean_ycompl))
 
         return self
     
@@ -126,11 +148,12 @@ class TSOCDetector(Detector):
         elif self.mode in [
                     'autoencoder',
                     'self-assessment',
-                    'self-assessment-MD'
+                    'self-assessment-MD',
                     'complement',
                     'complement-MD',
                     'self-assessment-complement',
-                    'self-assessment-complement-MD'
+                    'self-assessment-complement-MD',
+                    'self-assessment-complement-MD-CDF'
                   ]:
             # reconstruct data
             Xhat = self.cs.decode(list(zip(Y, Zhat)))
@@ -164,7 +187,7 @@ class TSOCDetector(Detector):
                 else:
                     score = self.MD_ycompl.score(Ybar - self.mean_ycompl)
             
-            elif self.mode in ['self-assessment-complement', 'self-assessment-complement-MD']:
+            elif self.mode in ['self-assessment-complement', 'self-assessment-complement-MD', 'self-assessment-complement-MD-CDF']:
                 Yhat = self.cs.encode(Xhat)
                 difference = Yhat - Y
                 Q, _ = np.linalg.qr(self.cs.A.T, mode='complete')
@@ -175,8 +198,12 @@ class TSOCDetector(Detector):
                     score = np.sqrt(np.sum((Ybar)**2, axis = -1)) \
                         + np.sqrt(np.sum((difference)**2, axis = -1)) 
                 else:
-                    score = self.MD_ydiff.score(difference - self.mean_ydiff) \
-                        + self.MD_ycompl.score(Ybar - self.mean_ycompl)
+                    score_ydiff = self.MD_ydiff.score(difference - self.mean_ydiff)
+                    score_ycompl = self.MD_ycompl.score(Ybar - self.mean_ycompl)
+                    if self.mode == 'self-assessment-complement-MD':
+                        score = score_ydiff + score_ycompl
+                    else:
+                        score = self.CDF_ydiff.predict(score_ydiff) + self.CDF_ycompl.predict(score_ycompl)
 
         else:
             raise ValueError(f'mode "{self.mode}" not supported')
