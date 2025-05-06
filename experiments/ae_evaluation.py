@@ -25,7 +25,7 @@ from models.ae import AE
 logging.basicConfig(level=logging.DEBUG)
 
 def test(
-    n, m, epochs, lr, opt, batch_size, N_train, N_test, fs, heart_rate, isnr,
+    n, m, epochs, lr, opt, beta, gamma, batch_size, N_train, N_test, fs, heart_rate, isnr,
     seed_training, processes, gpu, train_fraction, factor, 
     min_lr, min_delta, patience
 ):
@@ -61,7 +61,7 @@ def test(
     ae = AE(n, m)
     ae.to(device) # move the network to GPU
     model_name = f'AE-N={N_train}_n={n}_m={m}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}'\
-                 f'_isnr={isnr}'\
+                 f'_isnr={isnr}_beta={beta}_gamma={gamma}'\
                  f'_epochs={epochs}_bs={batch_size}_opt={opt}_lr={lr}'\
                  f'_tf={train_fraction}_minlr={min_lr}_p={patience}'\
                  f'_mind={min_delta}_seeddata={seed_train_data}_seedtrain={seed_training}'    
@@ -106,6 +106,8 @@ def parse_args():
     parser.add_argument('--N_train', '-N', type=int, default=2_000_000, help="Number of training samples")
     parser.add_argument('--N_test', '-M', type=int, default=10000, help="Number of test samples")
     parser.add_argument('--optimizer', '-O', type=str, default='adam', help="Optimizer for training")
+    parser.add_argument('--beta', '-w', type=float, default=0, help="Latent volume regularization weight")
+    parser.add_argument('--gamma', '-q', type=float, default=0, help="Regularization of the latten space reconstruction")
     parser.add_argument('--fs', '-f', type=int, default=256, help="Sampling frequency")
     parser.add_argument('--heart_rate', '-r', type=int, nargs=2, default=(60, 100), help="Heart rate range")
     parser.add_argument('--processes', '-p', type=int, default=48, help="Number of CPU processes")
@@ -130,6 +132,8 @@ if __name__ == '__main__':
         epochs=args.epochs,
         lr=args.lr,
         opt=args.optimizer,
+        beta=args.beta,
+        gamma=args.gamma,
         batch_size=args.batch_size,
         N_train=args.N_train,
         N_test=args.N_test,
