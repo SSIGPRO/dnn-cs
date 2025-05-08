@@ -24,7 +24,7 @@ from models.ae_discriminator import AED
 logging.basicConfig(level=logging.DEBUG)
 
 def training(
-    n, m, levels, epochs, lr, opt, beta, batch_size, N, fs, heart_rate, isnr, delta,
+    n, m, levels, epochs, lr, opt, beta, gamma, batch_size, N, fs, heart_rate, isnr, delta,
     seed_training, processes, gpu, train_fraction, factor, 
     min_lr, min_delta, patience
 ):
@@ -82,7 +82,7 @@ def training(
         Xko = pickle.load(f)
 
     N = int((N // num_anomalies) * num_anomalies)
-    Xok, Xko = Xok[:N], Xok[:N]
+    Xok, Xko = Xok[:N], Xko[:N]
 
     # ------------------ Data loaders ------------------
     dataset = TensorDataset(torch.from_numpy(Xok).float(), torch.from_numpy(Xko).float())  # Create a dataset from the tensors
@@ -134,6 +134,7 @@ def training(
         
             train_rsnr = 0.0
             train_mse = 0.0
+            train_vol = 0.0
             train_ceok = 0.0
             train_ceko = 0.0
             train_auc = 0.0
@@ -147,12 +148,13 @@ def training(
                 Zok, Zko = torch.zeros(Zok_hat.shape, dtype=torch.float).to(device), torch.ones(Zko_hat.shape, dtype=torch.float).to(device)
                 # compute metrics
                 mseok = mse(Xok_hat, Xok_batch)
+                latent_volume = torch.mean(torch.square(Yok_batch))
                 ceok, ceko = ce(Zok_hat, Zok), ce(Zko_hat, Zko)
                 auc = roc_auc_score(
                     np.concatenate([Zok.detach().cpu(), Zko.detach().cpu()]),
                       np.concatenate([Zok_hat.detach().cpu(), Zko_hat.detach().cpu()])
                       )
-                loss = mseok + beta * (ceok + ceko)
+                loss = mseok + gamma * (ceok + ceko) + beta * latent_volume
 
                 optimizer.zero_grad()     # zeroes the gradient buffers of all parameters
                 loss.backward()     # Backpropagate
@@ -163,6 +165,7 @@ def training(
                     break
                 train_rsnr += rsnr(Xok_hat, Xok_batch).item()
                 train_mse += mseok.item()
+                train_vol = train_vol/num_batches
                 train_ceok += ceok.item()
                 train_ceko += ceko.item()
                 train_auc += auc
@@ -170,15 +173,17 @@ def training(
             num_batches = len(train_loader)
             train_rsnr = train_rsnr/num_batches
             train_mse = train_mse/num_batches
+            train_vol = train_vol/num_batches
             train_ceok = train_ceok/num_batches
             train_ceko = train_ceko/num_batches
             train_auc = train_auc/num_batches
-            train_loss = train_mse + beta * (train_ceok  + train_ceko)
+            train_loss = train_mse + gamma * (train_ceok  + train_ceko) + beta * train_vol
 
             # validation loop
             ae.eval()     # Set the model to evaluation mode
             val_rsnr = 0.0
             val_mse = 0.0
+            val_vol = 0.0
             val_ceok = 0.0
             val_ceko = 0.0
             val_auc = 0.0
@@ -195,6 +200,7 @@ def training(
                     # compute metrics
                     val_rsnr += rsnr(Xok_hat, Xok_batch).item()
                     val_mse += mse(Xok_hat, Xok_batch).item()
+                    val_vol += torch.mean(torch.square(Yok_batch)).item()
                     val_ceok += ce(Zok_hat, Zok).item()
                     val_ceko += ce(Zko_hat, Zko).item()
                     val_auc += roc_auc_score(
@@ -205,10 +211,11 @@ def training(
             num_batches = len(val_loader)
             val_rsnr = val_rsnr/num_batches
             val_mse = val_mse/num_batches
+            val_vol = val_vol/num_batches
             val_ceok = val_ceok/num_batches
             val_ceko = val_ceko/num_batches
             val_auc = val_auc/num_batches
-            val_loss = val_mse + beta * (val_ceok  + val_ceko)
+            val_loss = val_mse + gamma * (val_ceok  + val_ceko) + beta * val_vol
             # callbacks
             # reduce lr on plateau
             scheduler.step(val_loss)
@@ -223,8 +230,8 @@ def training(
                 break
 
             print(f"Epoch [{epoch+1}/{epochs}], LR={scheduler.get_last_lr()[0]}"\
-                  f"\nTRAIN Loss: {np.round(train_loss, 8)}   MSE {np.round(train_mse, 8)}   RSNR {np.round(train_rsnr, 3)}   CE OK {np.round(train_ceok, 8)}   CE KO {np.round(train_ceko, 8)}   AUC {np.round(train_auc, 3)}"\
-                  f"\nVAL Loss: {np.round(val_loss, 8)}   MSE {np.round(val_mse, 8)}   RSNR {np.round(val_rsnr, 3)}   CE OK {np.round(val_ceok, 8)}   CE KO {np.round(val_ceko, 8)}   AUC {np.round(val_auc, 3)} \n")
+                  f"\nTRAIN Loss: {np.round(train_loss, 8)}   MSE {np.round(train_mse, 8)}   RSNR {np.round(train_rsnr, 3)}   VOL {np.round(train_vol, 8)}   CE OK {np.round(train_ceok, 8)}   CE KO {np.round(train_ceko, 8)}   AUC {np.round(train_auc, 3)}"\
+                  f"\nVAL Loss: {np.round(val_loss, 8)}   MSE {np.round(val_mse, 8)}   RSNR {np.round(val_rsnr, 3)}   VOL {np.round(val_vol, 8)}   CE OK {np.round(val_ceok, 8)}   CE KO {np.round(val_ceko, 8)}   AUC {np.round(val_auc, 3)} \n")
 
         # save trained model
         torch.save(ae.state_dict(), model_path)
@@ -244,7 +251,8 @@ def parse_args():
     parser.add_argument('--batch_size', '-b', type=int, default=128, help="Batch size for training")
     parser.add_argument('--N', '-N', type=int, default=2000000, help="Number of training instances")
     parser.add_argument('--optimizer', '-O', type=str, default='adam', help="Optimizer for training")
-    parser.add_argument('--beta', '-w', type=float, required=True, help="discrimitator weight")
+    parser.add_argument('--beta', '-w', type=float, default=0.0, help="Latent volume weight")
+    parser.add_argument('--gamma', '-q', type=float, default=0.0, help="Discrimitator weight")
     parser.add_argument('--fs', '-f', type=int, default=256, help="Sampling frequency")
     parser.add_argument('--heart_rate', '-r', type=int, nargs=2, default=(60, 100), help="Heart rate range")
     parser.add_argument('--processes', '-p', type=int, default=48, help="Number of CPU processes")
@@ -272,6 +280,7 @@ if __name__ == '__main__':
         lr=args.lr,
         opt=args.optimizer,
         beta=args.beta,
+        gamma=args.gamma,
         batch_size=args.batch_size,
         N=args.N,
         fs=args.fs,
