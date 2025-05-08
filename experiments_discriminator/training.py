@@ -24,7 +24,7 @@ from models.ae_discriminator import AED
 logging.basicConfig(level=logging.DEBUG)
 
 def training(
-    n, m, epochs, lr, opt, beta, batch_size, N, fs, heart_rate, isnr, delta,
+    n, m, levels, epochs, lr, opt, beta, batch_size, N, fs, heart_rate, isnr, delta,
     seed_training, processes, gpu, train_fraction, factor, 
     min_lr, min_delta, patience
 ):
@@ -32,7 +32,7 @@ def training(
     # ------------------ Constants ------------------
     seed_data = 11 # seed relative to training datas
     seed_ko = 0 # seed relative to anomalous training datas
-    N = int((N // 12) * N)
+    num_anomalies = 12
 
     # ------------------ Folders ------------------
     model_folder = f'{models_dir}AE'
@@ -81,6 +81,9 @@ def training(
     with open(ko_path, 'rb') as f:
         Xko = pickle.load(f)
 
+    N = int((N // num_anomalies) * num_anomalies)
+    Xok, Xko = Xok[:N], Xok[:N]
+
     # ------------------ Data loaders ------------------
     dataset = TensorDataset(torch.from_numpy(Xok).float(), torch.from_numpy(Xko).float())  # Create a dataset from the tensors
     # Split sizes for training and validation
@@ -98,7 +101,7 @@ def training(
                              num_workers=processes, worker_init_fn=seed_worker, generator=generator)
 
     # ------------------ Neural Network initialization ------------------
-    ae = AED(n, m)
+    ae = AED(n, m, levels)
     ae.to(device) # move the network to GPU
     model_name = f'AE-discriminator-N={N}_n={n}_m={m}_fs={fs}_hr={heart_rate[0]}-{heart_rate[1]}'\
                  f'_isnr={isnr}_beta={beta}'\
@@ -138,6 +141,7 @@ def training(
                 Xok_batch, Xko_batch = Xok_batch.to(device), Xko_batch.to(device) # move training data to GPU
                 # generate signals
                 Yok_batch, Yko_batch = ae.encode(Xok_batch), ae.encode(Xko_batch)
+                Yok_batch, Yko_batch = ae.quantize(Yok_batch), ae.quantize(Yko_batch)
                 Zok_hat, Zko_hat = ae.discriminate(Yok_batch), ae.discriminate(Yko_batch)
                 Xok_hat = ae.decode(Yok_batch)
                 Zok, Zko = torch.zeros(Zok_hat.shape, dtype=torch.float).to(device), torch.ones(Zko_hat.shape, dtype=torch.float).to(device)
@@ -183,6 +187,7 @@ def training(
                     Xok_batch, Xko_batch = Xok_batch.to(device), Xko_batch.to(device) # move training data to GPU
                     # generate signals
                     Yok_batch, Yko_batch = ae.encode(Xok_batch), ae.encode(Xko_batch)
+                    Yok_batch, Yko_batch = ae.quantize(Yok_batch), ae.quantize(Yko_batch)
                     Zok_hat, Zko_hat = ae.discriminate(Yok_batch), ae.discriminate(Yko_batch)
                     Xok_hat = ae.decode(Yok_batch)
 
@@ -232,6 +237,7 @@ def parse_args():
     parser.add_argument('--n', '-n', type=int, default=128, help="Number of samples per signal")
     parser.add_argument('--m', '-m', type=int, default=16, help="Number of measurements")
     parser.add_argument('--isnr', '-i', type=int, default=35, help="Signal-to-noise ratio (SNR)")
+    parser.add_argument('--levels', '-v', type=int, default=128, help="Quantization levels for each dimension")
     parser.add_argument('--seed_training', '-s', type=int, default=0, help="Training-related random seed for reproducibility")
     parser.add_argument('--epochs', '-e', type=int, default=1000, help="Number of training epochs")
     parser.add_argument('--lr', '-l', type=float, default=0.001, help="Learning rate")
@@ -261,6 +267,7 @@ if __name__ == '__main__':
     training(
         n=args.n,
         m=args.m,
+        levels=args.levels,
         epochs=args.epochs,
         lr=args.lr,
         opt=args.optimizer,
